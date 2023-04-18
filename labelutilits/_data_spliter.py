@@ -2,16 +2,17 @@ from sklearn.model_selection import KFold
 import yaml
 import numpy as np
 from pathlib import Path
-from _path import list_ext, list_images
+from _path import list_ext, list_images, _cp_file_list
 import shutil
-from labelutilits._path import _cp_file_list
+
 
 
 def k_fold_split_yolo(path2label:str,
                       path2image:str,
                       path_save_fold:str,
                       number_fold: int = 4):
-
+    path2label = Path(path2label)
+    path2image = Path(path2image)
     l_labels = sorted(list_ext(path2label), key = lambda x: x.split('.')[0])
     l_images = sorted(list_images(path2image), key = lambda x: x.split('.')[0])
     assert len(l_labels) == len(l_images), "The length of arrays does not match"
@@ -50,3 +51,6 @@ def k_fold_split_yolo(path2label:str,
             documents = yaml.dump(yaml_config, file)
         print(kf, len(train_indxs), len(test_indxs), path_2_fold)
     return
+if __name__ == "__main__":
+    k_fold_split_yolo("/storage/reshetnikov/openpits/sam_masks/yolo_format","/storage/reshetnikov/openpits/images_resize/",
+                      "/storage/reshetnikov/openpits/sam_masks/fold/",3)

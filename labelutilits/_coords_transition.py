@@ -1,6 +1,8 @@
 import numpy as np
 from ._path import list_ext, create_dir
 from pathlib import Path
+import json
+
 
 def yolo2coco(xc, yc, w, h, image_width, image_height):
     """
@@ -100,6 +102,33 @@ def convert_dir_yolo_to_cls_coef_xyxy(input_path, out_path):
         f_out.close()
         f.close()
 
+def convert_sam_to_yolo(input_path, out_path, square_tresh):
+    """
+        Convert sam json files to yolo format with bboxs    
+    """
+    files = Path(input_path).glob("*.json")
+    for fname in files:
+        with open(fname) as f:
+            data = json.load(f)
+        bboxs = []
+        for d in data: 
+            h, w = d['segmentation']['size']
+            xl, yl, w_box, h_box = d['bbox']
+            xc = (xl + w_box/2)/w
+            yc = (yl + h_box/2)/h
+            hrel = h_box/h
+            wrel = w_box/w
+            # print(h, w, xc, yc, wrel, hrel)
+            if d['area'] > square_tresh and d['area'] < (h*w)*0.85:
+                bboxs.append([xc, yc, wrel, hrel])
+        
+        with open(Path(out_path) / (fname.stem + ".txt" ), 'w') as f:
+            for box in bboxs:
+                xc, yc, hrel, wrel = box 
+                f.write("{} {:.4f} {:.4f} {:.4f} {:.4f}\n".format(0, xc, yc, hrel, wrel))
+        
+
 if __name__ == "__main__":
-    convert_dir_yolo_to_cls_coef_xyxy("/home/reshetnikov/asbest/yolov8_segmentation/mAP/input/detection-results",
-                                  "/home/reshetnikov/asbest/yolov8_segmentation/mAP/input/detect_convert/")
+    # convert_dir_yolo_to_cls_coef_xyxy("/home/reshetnikov/asbest/yolov8_segmentation/mAP/input/detection-results",
+    #                               "/home/reshetnikov/asbest/yolov8_segmentation/mAP/input/detect_convert/")
+    convert_sam_to_yolo("/storage/reshetnikov/openpits/sam_masks/", "/storage/reshetnikov/openpits/sam_masks/yolo_format", 200)
