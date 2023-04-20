@@ -1,4 +1,7 @@
 import numpy as np
+import sys
+import os
+sys.path.append(os.getcwd())
 from ._path import list_ext, create_dir
 from pathlib import Path
 import json
@@ -107,6 +110,7 @@ def convert_sam_to_yolo(input_path, out_path, square_tresh):
         Convert sam json files to yolo format with bboxs    
     """
     files = Path(input_path).glob("*.json")
+    print("Count files :",len(list(files)))
     for fname in files:
         with open(fname) as f:
             data = json.load(f)
@@ -131,4 +135,4 @@ def convert_sam_to_yolo(input_path, out_path, square_tresh):
 if __name__ == "__main__":
     # convert_dir_yolo_to_cls_coef_xyxy("/home/reshetnikov/asbest/yolov8_segmentation/mAP/input/detection-results",
     #                               "/home/reshetnikov/asbest/yolov8_segmentation/mAP/input/detect_convert/")
-    convert_sam_to_yolo("/storage/reshetnikov/openpits/sam_masks/", "/storage/reshetnikov/openpits/sam_masks/yolo_format", 200)
+    convert_sam_to_yolo("/storage/reshetnikov/openpits/sam_masks/", "/storage/reshetnikov/openpits/sam_masks/yolo_format", 500)

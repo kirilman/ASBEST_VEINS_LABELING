@@ -4,8 +4,35 @@ import numpy as np
 from pathlib import Path
 from _path import list_ext, list_images, _cp_file_list
 import shutil
+from _coords_transition import yolo2xyxy, xywh2xyxy
+import cv2
 
 
+class ImageWithBoxs:
+    def __init__(self, path2image, box_coords):
+        """
+            box_coords: x1,y1,x2,y2 normalize
+        """
+        self.image = cv2.imread(path2image)
+        self.box_coords = np.array(box_coords)
+        h,w = self.image_height_width()
+        self.box_coords[:,[0,2]]*= w
+        self.box_coords[:,[1,3]]*= h
+    
+    def image_height_width(self):
+        return self.image.shape[:2]
+        
+    def get_image_slice(self, box_id):
+        x1,y1,x2,y2 = np.ceil(self.box_coords[box_id]).astype(int)
+        return self.image[y1:y2, x1:x2]
+    
+    def get_slices(self):
+        slices = {}
+        for i, box in enumerate(self.box_coords):
+            x1,y1,x2,y2 = np.ceil(box).astype(int)
+            slices[i] = {'image':self.image[y1:y2, x1:x2,:],
+                          'box':[x1,y1,x2,y2]}
+        return slices
 
 def k_fold_split_yolo(path2label:str,
                       path2image:str,
@@ -51,6 +78,90 @@ def k_fold_split_yolo(path2label:str,
             documents = yaml.dump(yaml_config, file)
         print(kf, len(train_indxs), len(test_indxs), path_2_fold)
     return
+
+
+def is_valid_slice(image, model, conf = 0.6):
+    image = np.ascontiguousarray(image)
+    res = model(image, conf = conf, task = 'detect')
+    boxes = res[0].boxes.xyxyn.detach().cpu().numpy()
+    if len(boxes) == 1:
+        print(res[0].boxes.conf)
+        x1, y1, x2, y2 = boxes[0,:]
+        s = (x2-x1)*(y2-y1)
+        if s > 0.8:
+            return True
+    else:
+        for box in boxes:
+            x1, y1, x2, y2 = box[:4]
+            s = (x2-x1)*(y2-y1)
+            if s>0.6:
+                return True
+    return False
+
+def neyral_filter(path2image, model, bbox_coords):
+    image_with_boxes = ImageWithBoxs(path2image,bbox_coords)
+    for k, img in image_with_boxes.get_slices():
+        test_image = np.ascontiguousarray(img['image'])
+        if is_valid_slice(img, model):
+            
+
+def iou_value(a, b):
+    """
+        a: List [x1, y1, x2, y2]
+        b: List [x1, y1, x2, y2]
+    """
+    area_a = (a[2] - a[0]) * (a[3] - a[1])
+    area_b = (b[2] - b[0]) * (b[3] - b[1])
+
+    iou_x1 = np.maximum(a[0], b[0])
+    iou_y1 = np.maximum(a[1], b[1])
+    iou_x2 = np.minimum(a[2], b[2])
+    iou_y2 = np.minimum(a[3], b[3])
+
+    iou_w = iou_x2 - iou_x1
+    iou_h = iou_y2 - iou_y1
+    # print(iou_w, iou_h)
+    if iou_w > 0 and iou_h > 0:
+        area_iou = iou_w * iou_h
+        iou = area_iou / (area_a + area_b - area_iou)
+    else:
+        iou = 0
+    return iou
+ 
+def merge_yolo_anno(path2label, path2other, path2save, iou_tresh = 0.4):
+    path2other = Path(path2other)
+    path2save  = Path(path2save)
+    for path in Path(path2label).glob('*.txt'):
+        with open(path,'r') as f1:
+            lines = f1.readlines()
+        with open(path2other / path.name, 'r' ) as f2:
+            other_lines = set(f2.readlines())
+
+        for main_line in lines:
+            box_1 = yolo2xyxy(*np.fromstring(main_line, dtype=float, sep=' ')[1:].tolist())
+            copy_set = other_lines.copy()
+            for o_line in other_lines:
+                box_2 = yolo2xyxy(*np.fromstring(o_line, dtype=float, sep=' ')[1:].tolist())
+
+                print(path.stem," ", iou_value(box_1,box_2))
+                if iou_value(box_1,box_2) > iou_tresh: # удаляем box у которого пересечение с основным box  если внутри не добавлять
+                    copy_set.remove(o_line)
+            other_lines = copy_set.copy()
+        print(len(other_lines))
+
+        #Фильтрация нейросетью
+        bbox_coords = xywh2xyxy(np.array(list(other_lines)))
+        neyral_filter(image, model, bbox_coords)
+
+        lines = lines + list(other_lines)
+        with open(path2save / path.name, 'w') as f_out:
+            for line in lines:
+                f_out.writelines(line)
+
 if __name__ == "__main__":
-    k_fold_split_yolo("/storage/reshetnikov/openpits/sam_masks/yolo_format","/storage/reshetnikov/openpits/images_resize/",
-                      "/storage/reshetnikov/openpits/sam_masks/fold/",3)
+    # k_fold_split_yolo("/storage/reshetnikov/openpits/sam_masks/merge_labels/","/storage/reshetnikov/openpits/images_resize/",
+    #                   "/storage/reshetnikov/openpits/sam_masks/fold_merge/",3)
+
+    merge_yolo_anno('/storage/reshetnikov/openpits/labels/',
+                    '/storage/reshetnikov/openpits/sam_masks/yolo_format/',
+                    '/storage/reshetnikov/openpits/sam_masks/merge_labels/', 0.5)
