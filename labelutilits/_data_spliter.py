@@ -2,10 +2,11 @@ from sklearn.model_selection import KFold
 import yaml
 import numpy as np
 from pathlib import Path
+from _coords_transition import yolo2xyxy, xywh2xyxy
 from _path import list_ext, list_images, _cp_file_list
 import shutil
-from _coords_transition import yolo2xyxy, xywh2xyxy
 import cv2
+from ultralytics import YOLO
 
 
 class ImageWithBoxs:
@@ -85,7 +86,6 @@ def is_valid_slice(image, model, conf = 0.6):
     res = model(image, conf = conf, task = 'detect')
     boxes = res[0].boxes.xyxyn.detach().cpu().numpy()
     if len(boxes) == 1:
-        print(res[0].boxes.conf)
         x1, y1, x2, y2 = boxes[0,:]
         s = (x2-x1)*(y2-y1)
         if s > 0.8:
@@ -98,12 +98,16 @@ def is_valid_slice(image, model, conf = 0.6):
                 return True
     return False
 
-def neyral_filter(path2image, model, bbox_coords):
-    image_with_boxes = ImageWithBoxs(path2image,bbox_coords)
-    for k, img in image_with_boxes.get_slices():
+def neyral_filter(image_with_boxes, model):
+    """
+        Get the indexes of the array bbox_coords for which the neural network has found an object
+    """
+    indexs = []
+    for k, img in image_with_boxes.get_slices().items():
         test_image = np.ascontiguousarray(img['image'])
-        if is_valid_slice(img, model):
-            
+        if is_valid_slice(test_image, model):
+            indexs.append(k)
+    return indexs
 
 def iou_value(a, b):
     """
@@ -128,10 +132,19 @@ def iou_value(a, b):
         iou = 0
     return iou
  
-def merge_yolo_anno(path2label, path2other, path2save, iou_tresh = 0.4):
+def merge_yolo_anno(path2label, 
+                    path2image, 
+                    path2other, 
+                    path2save, 
+                    path2netmodel="/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt", 
+                    iou_tresh = 0.4):
+    
     path2other = Path(path2other)
     path2save  = Path(path2save)
+    model = YOLO(path2netmodel)
+    f_images = {x.stem: x for x in Path(path2image).glob('*')}
     for path in Path(path2label).glob('*.txt'):
+        
         with open(path,'r') as f1:
             lines = f1.readlines()
         with open(path2other / path.name, 'r' ) as f2:
@@ -143,25 +156,30 @@ def merge_yolo_anno(path2label, path2other, path2save, iou_tresh = 0.4):
             for o_line in other_lines:
                 box_2 = yolo2xyxy(*np.fromstring(o_line, dtype=float, sep=' ')[1:].tolist())
 
-                print(path.stem," ", iou_value(box_1,box_2))
                 if iou_value(box_1,box_2) > iou_tresh: # удаляем box у которого пересечение с основным box  если внутри не добавлять
                     copy_set.remove(o_line)
             other_lines = copy_set.copy()
-        print(len(other_lines))
-
-        #Фильтрация нейросетью
-        bbox_coords = xywh2xyxy(np.array(list(other_lines)))
-        neyral_filter(image, model, bbox_coords)
-
-        lines = lines + list(other_lines)
+        other_lines = list(other_lines)
+        #Neural net filtration
+        a = [np.fromstring(line, dtype=float, sep=' ')[1:] for line in other_lines]
+        bbox_coords = xywh2xyxy(np.array(a))
+        f_image = str(f_images[path.stem])
+        image_with_bbox = ImageWithBoxs(f_image,bbox_coords)
+        indexes = neyral_filter(image_with_bbox, model)
+        filter_lines = [other_lines[k] for k in indexes]
+        print(len(bbox_coords),len(filter_lines))
+        lines = lines + filter_lines
         with open(path2save / path.name, 'w') as f_out:
             for line in lines:
                 f_out.writelines(line)
 
 if __name__ == "__main__":
-    # k_fold_split_yolo("/storage/reshetnikov/openpits/sam_masks/merge_labels/","/storage/reshetnikov/openpits/images_resize/",
-    #                   "/storage/reshetnikov/openpits/sam_masks/fold_merge/",3)
+    k_fold_split_yolo("/storage/reshetnikov/openpits/sam_masks/merge_labels/","/storage/reshetnikov/openpits/images_resize/",
+                      "/storage/reshetnikov/openpits/sam_masks/fold_merge/",3)
 
-    merge_yolo_anno('/storage/reshetnikov/openpits/labels/',
-                    '/storage/reshetnikov/openpits/sam_masks/yolo_format/',
-                    '/storage/reshetnikov/openpits/sam_masks/merge_labels/', 0.5)
+    # merge_yolo_anno('/storage/reshetnikov/openpits/labels/',
+    #                 '/storage/reshetnikov/openpits/images_resize/',
+    #                 '/storage/reshetnikov/openpits/sam_masks/yolo_format/',
+    #                 '/storage/reshetnikov/openpits/sam_masks/merge_labels/', 
+    #                 '/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt',
+    #                 0.5)
