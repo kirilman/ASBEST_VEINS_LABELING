@@ -6,7 +6,9 @@ import pandas as pd
 from tqdm import main
 import sys
 sys.path.append("./")
-from ._path import list_ext, list_images
+from _path import list_ext, list_images
+# from ._path import list_ext, list_images
+
 from pathlib import Path
 from PIL import Image
 import json
@@ -20,7 +22,7 @@ def yolo2coco(xc, yc, w, h, image_width, image_height):
     yc, h = yc*image_height, h*image_height
     xmin = xc - (w/2)
     ymin = yc - (h/2)
-    return xmin,ymin, w, h
+    return xmin, ymin, w, h
 
 def segment2box(x_coords, y_coords):
     xl = np.min(x_coords)
@@ -33,7 +35,7 @@ def box2segment(box: List):
     """
         box: List coco format
     """
-    x, y, h, w = box
+    x, y, w, h = box
     segment = []
     segment.append(x)
     segment.append(y)
@@ -186,11 +188,19 @@ class Yolo2Coco():
 if __name__ == "__main__":
 
 
-    conv = Yolo2Coco("../dataset/segmentation/train", "../dataset/segmentation/train", 
-            "../dataset/segmentation/train/anno_train.json")
+    # conv = Yolo2Coco("../dataset/segmentation/train", "../dataset/segmentation/train", 
+    #         "../dataset/segmentation/train/anno_train.json")
+    # conv.convert()
+
+
+    # conv = Yolo2Coco("../dataset/segmentation/test", "../dataset/segmentation/test", 
+    #         "../dataset/segmentation/test/anno_test.json")
+    # conv.convert()
+    conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/train/", 
+                 "/storage/reshetnikov/openpits/fold/Fold_0/train/", 
+                 "/storage/reshetnikov/openpits/fold/Fold_0/anno_train.json")
     conv.convert()
-
-
-    conv = Yolo2Coco("../dataset/segmentation/test", "../dataset/segmentation/test", 
-            "../dataset/segmentation/test/anno_test.json")
+    conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/test/", 
+                    "/storage/reshetnikov/openpits/fold/Fold_0/test/", 
+                    "/storage/reshetnikov/openpits/fold/Fold_0/anno_test.json")
     conv.convert()
