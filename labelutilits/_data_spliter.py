@@ -98,14 +98,14 @@ def is_valid_slice(image, model, conf = 0.6):
                 return True
     return False
 
-def neyral_filter(image_with_boxes, model):
+def neyral_filter(image_with_boxes, model, valid_score):
     """
         Get the indexes of the array bbox_coords for which the neural network has found an object
     """
     indexs = []
     for k, img in image_with_boxes.get_slices().items():
         test_image = np.ascontiguousarray(img['image'])
-        if is_valid_slice(test_image, model):
+        if is_valid_slice(test_image, model, valid_score):
             indexs.append(k)
     return indexs
 
@@ -159,13 +159,15 @@ def merge_yolo_anno(path2label,
                 if iou_value(box_1,box_2) > iou_tresh: # удаляем box у которого пересечение с основным box  если внутри не добавлять
                     copy_set.remove(o_line)
             other_lines = copy_set.copy()
+        print(other_lines)
         other_lines = list(other_lines)
         #Neural net filtration
         a = [np.fromstring(line, dtype=float, sep=' ')[1:] for line in other_lines]
+        
         bbox_coords = xywh2xyxy(np.array(a))
         f_image = str(f_images[path.stem])
         image_with_bbox = ImageWithBoxs(f_image,bbox_coords)
-        indexes = neyral_filter(image_with_bbox, model)
+        indexes = neyral_filter(image_with_bbox, model, valid_score = 0.6)
         filter_lines = [other_lines[k] for k in indexes]
         print(len(bbox_coords),len(filter_lines))
         lines = lines + filter_lines
@@ -173,9 +175,39 @@ def merge_yolo_anno(path2label,
             for line in lines:
                 f_out.writelines(line)
 
+def filter_bboxs_by_network(path2label, 
+                           path2image, 
+                           path2save, 
+                           path2netmodel="/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt", 
+                           iou_tresh = 0.4):
+
+    path2save  = Path(path2save)
+    model = YOLO(path2netmodel)
+    f_images = {x.stem: x for x in Path(path2image).glob('*')}
+    for path in Path(path2label).glob('*.txt'):
+        
+        with open(path,'r') as f1:
+            lines = f1.readlines()
+         #Neural net filtration
+        a = [np.fromstring(line, dtype=float, sep=' ')[1:] for line in lines]
+        
+        bbox_coords = xywh2xyxy(np.array(a))
+        f_image = str(f_images[path.stem])
+        image_with_bbox = ImageWithBoxs(f_image,bbox_coords)
+        indexes = neyral_filter(image_with_bbox, model, valid_score = 0.7)
+        filter_lines = [lines[k] for k in indexes]
+        print(len(bbox_coords),len(filter_lines))
+        
+        with open(path2save / path.name, 'w') as f_out:
+            for line in filter_lines:
+                f_out.writelines(line)
+
 if __name__ == "__main__":
-    k_fold_split_yolo("/storage/reshetnikov/openpits/sam_masks/merge_labels/","/storage/reshetnikov/openpits/images_resize/",
-                      "/storage/reshetnikov/openpits/sam_masks/fold_merge/",3)
+    # k_fold_split_yolo("/storage/reshetnikov/openpits/update_anno_sam/correct/","/storage/reshetnikov/openpits/images_resize/",
+    #                   "/storage/reshetnikov/openpits/update_anno_sam/fold_update/",4)
+
+    k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/yolo_format","/storage/reshetnikov/open_pits_merge/images/",
+                      "/storage/reshetnikov/open_pits_merge/fold/",4)
 
     # merge_yolo_anno('/storage/reshetnikov/openpits/labels/',
     #                 '/storage/reshetnikov/openpits/images_resize/',
@@ -183,3 +215,16 @@ if __name__ == "__main__":
     #                 '/storage/reshetnikov/openpits/sam_masks/merge_labels/', 
     #                 '/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt',
     #                 0.5)
+    
+    # merge_yolo_anno('/storage/reshetnikov/part10/sam_yolo/',
+    #                 '/storage/reshetnikov/part10/',
+    #                 '/storage/reshetnikov/part10/other/',
+    #                 '/storage/reshetnikov/part10/merge_labels/', 
+    #                 '/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt',
+    #                 0.4)
+    
+    # filter_bboxs_by_network('/storage/reshetnikov/part10/sam_yolo/',
+    #                 '/storage/reshetnikov/part10/',
+    #                 '/storage/reshetnikov/part10/merge_labels/', 
+    #                 '/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt',
+    #                 0.55)
