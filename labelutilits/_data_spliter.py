@@ -206,8 +206,8 @@ if __name__ == "__main__":
     # k_fold_split_yolo("/storage/reshetnikov/openpits/update_anno_sam/correct/","/storage/reshetnikov/openpits/images_resize/",
     #                   "/storage/reshetnikov/openpits/update_anno_sam/fold_update/",4)
 
-    k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/yolo_format","/storage/reshetnikov/open_pits_merge/images/",
-                      "/storage/reshetnikov/open_pits_merge/fold/",4)
+    k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/obb","/storage/reshetnikov/open_pits_merge/images/",
+                      "/storage/reshetnikov/open_pits_merge/obb_fold/",4)
 
     # merge_yolo_anno('/storage/reshetnikov/openpits/labels/',
     #                 '/storage/reshetnikov/openpits/images_resize/',

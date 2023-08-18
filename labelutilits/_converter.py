@@ -13,7 +13,8 @@ from pathlib import Path
 from PIL import Image
 import json
 from typing import List
-
+from pycocotools.coco import COCO
+from utils.geometry import coords_main_line, coords_other_line, coords_obb
 def polygone_area(x,y):
     return 0.5 * np.array(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
@@ -46,6 +47,13 @@ def box2segment(box: List):
     segment.append(x)
     segment.append(y+h)
     return segment
+
+def ellipse_parameters(x, y):
+    from skimage.measure import EllipseModel
+    a_points = np.array([x, y]).T
+    ell = EllipseModel()
+    ell.estimate(a_points)
+    return ell.params
 
 class Yolo2Coco():
     def __init__(self, path_label, path_image, path_save_json):
@@ -185,6 +193,48 @@ class Yolo2Coco():
             json.dump(data,f)
         print("Save result to", self.path_save_json)
 
+
+def coco2obb(path2json, path2save):
+    """
+        Convert coco polygon coordinates to obb format coordinates. Save the result in *.txt files in path2save directory
+    Args:
+        path2json (str): json with coco format
+        path2save (str): save directory
+    """
+    coco = COCO(path2json)
+    frame = pd.DataFrame(coco.anns).T
+    df_image = pd.DataFrame(coco.imgs).T
+    image_dict = df_image.T.to_dict()
+    print(image_dict)
+    fname = str(df_image[df_image.id ==  frame.iloc[0].image_id]['file_name'].values[0].split('.')[0])    
+    file_out = open(Path(path2save) / (fname + ".txt" ), 'w')    
+    for k, row in frame.iterrows():
+        IMAGE_W = image_dict[row.image_id]['width']
+        IMAGE_H = image_dict[row.image_id]['height']
+        
+        try:
+            x_coords = np.array(row.segmentation[0][::2])/IMAGE_W
+            y_coords = np.array(row.segmentation[0][1::2])/IMAGE_H
+            xc, yc, a, b, theta = ellipse_parameters(x_coords, y_coords)
+        except:
+            print('Dont get ellipse parameters for ', row)
+            continue
+        x1, y1, x2, y2 = coords_main_line(xc, yc, a, theta)
+        x1, y1, x2, y2 = coords_other_line(xc, yc, b, theta) # b axes
+        ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4 = coords_obb(x1, y1, x2, y2, a, theta)
+
+        if fname == str(df_image[df_image.id ==  row.image_id]['file_name'].values[0].split('.')[0]):
+            line = "{} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f}\n".format(row.category_id, ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4)
+            file_out.write(line)
+            
+        else:
+            file_out.close()
+            file_out = open(Path(path2save) / (fname + ".txt" ), 'a')    
+            line = "{} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f}\n".format(row.category_id, ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4)
+            file_out.write(line)
+            fname = str(df_image[df_image.id ==  row.image_id]['file_name'].values[0].split('.')[0])  
+    file_out.close()
+    return True
 if __name__ == "__main__":
 
 
@@ -196,11 +246,13 @@ if __name__ == "__main__":
     # conv = Yolo2Coco("../dataset/segmentation/test", "../dataset/segmentation/test", 
     #         "../dataset/segmentation/test/anno_test.json")
     # conv.convert()
-    conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/train/", 
-                 "/storage/reshetnikov/openpits/fold/Fold_0/train/", 
-                 "/storage/reshetnikov/openpits/fold/Fold_0/anno_train.json")
-    conv.convert()
-    conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/test/", 
-                    "/storage/reshetnikov/openpits/fold/Fold_0/test/", 
-                    "/storage/reshetnikov/openpits/fold/Fold_0/anno_test.json")
-    conv.convert()
+    # conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/train/", 
+    #              "/storage/reshetnikov/openpits/fold/Fold_0/train/", 
+    #              "/storage/reshetnikov/openpits/fold/Fold_0/anno_train.json")
+    # conv.convert()
+    # conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/test/", 
+    #                 "/storage/reshetnikov/openpits/fold/Fold_0/test/", 
+    #                 "/storage/reshetnikov/openpits/fold/Fold_0/anno_test.json")
+    # conv.convert()
+
+    coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
