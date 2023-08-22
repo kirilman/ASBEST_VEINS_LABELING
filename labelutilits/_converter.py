@@ -55,6 +55,12 @@ def ellipse_parameters(x, y):
     ell.estimate(a_points)
     return ell.params
 
+def clear_negative_values(x):
+    if x<=0:
+        return 0.001
+    else:
+        return x
+    
 class Yolo2Coco():
     def __init__(self, path_label, path_image, path_save_json):
         self.path_label = path_label
@@ -208,13 +214,14 @@ def coco2obb(path2json, path2save):
     print(image_dict)
     fname = str(df_image[df_image.id ==  frame.iloc[0].image_id]['file_name'].values[0].split('.')[0])    
     file_out = open(Path(path2save) / (fname + ".txt" ), 'w')    
+
     for k, row in frame.iterrows():
         IMAGE_W = image_dict[row.image_id]['width']
         IMAGE_H = image_dict[row.image_id]['height']
         
         try:
-            x_coords = np.array(row.segmentation[0][::2])/IMAGE_W
-            y_coords = np.array(row.segmentation[0][1::2])/IMAGE_H
+            x_coords = np.array(row.segmentation[0][::2])#/IMAGE_W
+            y_coords = np.array(row.segmentation[0][1::2])#/IMAGE_H
             xc, yc, a, b, theta = ellipse_parameters(x_coords, y_coords)
         except:
             print('Dont get ellipse parameters for ', row)
@@ -222,17 +229,29 @@ def coco2obb(path2json, path2save):
         x1, y1, x2, y2 = coords_main_line(xc, yc, a, theta)
         x1, y1, x2, y2 = coords_other_line(xc, yc, b, theta) # b axes
         ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4 = coords_obb(x1, y1, x2, y2, a, theta)
+        ox1 = clear_negative_values(ox1)
+        oy1 = clear_negative_values(oy1)
+        ox2 = clear_negative_values(ox2)
+        oy2 = clear_negative_values(oy2)
 
-        if fname == str(df_image[df_image.id ==  row.image_id]['file_name'].values[0].split('.')[0]):
-            line = "{} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f}\n".format(row.category_id, ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4)
+        ox3 = clear_negative_values(ox3)
+        oy3 = clear_negative_values(oy3)
+        ox4 = clear_negative_values(ox4)
+        oy4 = clear_negative_values(oy4)
+
+        cls_id = row.category_id - 1
+        cls_id = 'stone'
+        current_fname = str(df_image[df_image.id ==  row.image_id]['file_name'].values[0].split('.')[0])
+        if fname == current_fname:
+            line = "{:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {} 0\n".format( ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4, cls_id)
             file_out.write(line)
             
         else:
             file_out.close()
+            fname = current_fname
             file_out = open(Path(path2save) / (fname + ".txt" ), 'a')    
-            line = "{} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f}\n".format(row.category_id, ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4)
+            line = "{:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {} 0\n".format( ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4, cls_id)
             file_out.write(line)
-            fname = str(df_image[df_image.id ==  row.image_id]['file_name'].values[0].split('.')[0])  
     file_out.close()
     return True
 if __name__ == "__main__":
