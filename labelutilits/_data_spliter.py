@@ -43,7 +43,11 @@ def k_fold_split_yolo(path2label:str,
     path2image = Path(path2image)
     l_labels = sorted(list_ext(path2label), key = lambda x: x.split('.')[0])
     l_images = sorted(list_images(path2image), key = lambda x: x.split('.')[0])
-    assert len(l_labels) == len(l_images), "The length of arrays does not match"
+    if len(l_labels) != len(l_images): 
+        print("The length of arrays does not match {} and {}".format(len(l_labels), len(l_images)))
+    else:
+        pass
+
     path_save_fold  = Path(path_save_fold)
     if path_save_fold.exists():
         shutil.rmtree(path_save_fold)

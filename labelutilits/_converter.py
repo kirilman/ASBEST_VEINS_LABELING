@@ -4,8 +4,7 @@ import os
 import pandas as pd
 
 from tqdm import main
-import sys
-sys.path.append("./")
+
 from _path import list_ext, list_images
 # from ._path import list_ext, list_images
 
@@ -15,6 +14,9 @@ import json
 from typing import List
 from pycocotools.coco import COCO
 from utils.geometry import coords_main_line, coords_other_line, coords_obb
+import argparse
+
+
 def polygone_area(x,y):
     return 0.5 * np.array(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
@@ -224,11 +226,14 @@ def coco2obb(path2json, path2save):
             y_coords = np.array(row.segmentation[0][1::2])#/IMAGE_H
             xc, yc, a, b, theta = ellipse_parameters(x_coords, y_coords)
         except:
-            print('Dont get ellipse parameters for ', row)
+            print("Failed to obtain ellipse parameters for ", row)
             continue
         x1, y1, x2, y2 = coords_main_line(xc, yc, a, theta)
         x1, y1, x2, y2 = coords_other_line(xc, yc, b, theta) # b axes
         ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4 = coords_obb(x1, y1, x2, y2, a, theta)
+
+        # if any(t < 0 for t in (ox1, oy1, ox2, oy2, ox3, oy3, ox4, oy4)):
+            # continue
         ox1 = clear_negative_values(ox1)
         oy1 = clear_negative_values(oy1)
         ox2 = clear_negative_values(ox2)
@@ -274,4 +279,13 @@ if __name__ == "__main__":
     #                 "/storage/reshetnikov/openpits/fold/Fold_0/anno_test.json")
     # conv.convert()
 
-    coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
+    parser = argparse.ArgumentParser(description='Convert labels to other coordinate system.')
+    parser.add_argument('--inpt_dir', type=str,
+                        help='Input directory with files.')
+    parser.add_argument('--save_dir', type=str, help='Save directory with converted labels files.')
+    parser.add_argument('--type', type = str , default='coco2obb', help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files")
+    args = parser.parse_args()
+    print(args, args.type)
+    if args.type == 'coco2obb':
+        coco2obb(args.inpt_dir, args.save_dir)
+        # coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
