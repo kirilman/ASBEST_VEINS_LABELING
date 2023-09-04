@@ -24,6 +24,7 @@ def point_intersection(x1,y1,x2,y2, x3, y3, x4,y4):
     b = ((x1*y2 - y1*x2)*(y3-y4) - (y1 - y2)*(x3*y4 - y3*x4))/((x1 - x2)*(y3-y4) - (y1-y2)*(x3-x4))
     return a,b
 
+
 def coords_main_line(x_center, y_center, a, alpha):
     """
         Get the coordinates x1,y1,x2,y2 for the major axis of an ellipse with a - major radius  
@@ -105,3 +106,42 @@ def coords_obb(bx1, by1, bx2, by2, a, theta):
     y3 = by2 - a*np.sin(theta)
     p1,p2,p3,p4 = correct_sequence((x1, y1),(x2, y2),(x3, y3),(x4, y4))
     return *p1, *p2, *p3, *p4
+
+def coords_max_line(x_coords, y_coords):
+    """
+        Get coords max_line x1, y1, x2, y2
+    Args:
+        x_coords (np.darray): x coords polygone
+        y_coords (np.darray): y coords polygone
+    """
+    max_distance = 0
+    points = [(x,y) for x,y in zip(x_coords, y_coords)]
+    main_point = None
+
+    for p1 in points:
+        for p2 in points:
+            dist = max(max_distance, distance(p1, p2))
+        if dist > max_distance:
+            max_distance = dist
+            main_point = (p1, p2)
+    x1, y1 = main_point[0]
+    x2, y2 = main_point[1]
+    return x1, y1, x2, y2
+
+
+def position(x, y, x1, y1, x2, y2):
+    """point position right or left
+    Args:
+        x (_type_): point 
+        y (_type_): point
+        x1 (_type_): line
+        y1 (_type_): line
+        x2 (_type_): line
+        y2 (_type_): line
+
+    Returns:
+        bool: 
+    """
+    return (y2 - y1) * (x - x1) - (y - y1) * (x2 - x1)
+
+        
