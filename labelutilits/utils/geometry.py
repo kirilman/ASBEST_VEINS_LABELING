@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Tuple
 
 def distance(p1,p2):
     x0 = p1[0] - p2[0]
@@ -121,9 +122,9 @@ def coords_max_line(x_coords, y_coords):
     for p1 in points:
         for p2 in points:
             dist = max(max_distance, distance(p1, p2))
-        if dist > max_distance:
-            max_distance = dist
-            main_point = (p1, p2)
+            if dist > max_distance:
+                max_distance = dist
+                main_point = (p1, p2)
     x1, y1 = main_point[0]
     x2, y2 = main_point[1]
     return x1, y1, x2, y2
@@ -144,4 +145,45 @@ def position(x, y, x1, y1, x2, y2):
     """
     return (y2 - y1) * (x - x1) - (y - y1) * (x2 - x1)
 
-        
+
+def distance_to_perpendicular(a, b, c, x, y):
+    return abs(a*x+b*y+c)/np.sqrt(a**2+b**2)
+
+def line_from_points(p1, p2): 
+    a = p2[1] - p1[1]
+    b = p2[0] - p1[0]
+    c = - a*(p1[0]) + b*(p1[1])
+    return a, -b, c
+
+def vec_from_points(p1, p2): 
+    a = p2[0] - p1[0]
+    b = p2[1] - p1[1]
+    return a, b
+
+def coords_perpendicular(p1:Tuple, p2:Tuple, p3:Tuple):
+    """
+    Not worked!!!
+    Args:
+        p1 (Tuple): main point 
+        p2 (Tuple): first point of line
+        p3 (Tuple): second point of line
+    """
+    x1, y1 = p1
+    x2, y2 = p2
+    x3, y3 = p3
+    x4=((x2-x1)*(y2-y1)*(y3-y1)+x1*pow(y2-y1, 2)+x3*pow(x2-x1, 2))/(pow(y2-y1, 2)+pow(x2-x1, 2))
+    y4=(y2-y1)*(x4-x1)/(x2-x1)+y1
+
+
+def dot_product_angle(v1,v2):
+    if isinstance(v1, list):
+        v1 = np.array(v1)
+    if isinstance(v2, list):
+        v2 = np.array(v2)
+    if np.linalg.norm(v1) == 0 or np.linalg.norm(v2) == 0:
+        print("Zero magnitude vector!")
+    else:
+        vector_dot_product = np.dot(v1,v2)
+        res = np.arccos(vector_dot_product / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+        return res
+    return 0
