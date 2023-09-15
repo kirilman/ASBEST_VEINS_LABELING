@@ -20,11 +20,17 @@ import matplotlib.colors as mcolors
 from pycocotools.coco import COCO
 
 
-from ._annojson  import *
-from ._coco_func import *
-from ._path      import *
-from .OLD._coco_func import _get_coco_annotations
+# from ._annojson  import *
+# from ._coco_func import *
+# from ._path      import *
+# from .OLD._coco_func import _get_coco_annotations
+      
+from _annojson  import *
+from _coco_func import *
+from _path      import *
+from OLD._coco_func import _get_coco_annotations
         
+
 #----------------------------------------------
 def check_anno_labels(anno_path, image_dir_path = None, cat_ids = None):
     '''
@@ -407,3 +413,73 @@ def copy2train(anno_path, new_img_dir  = 'train', project_path = None, copy_anno
     return df, new_anno_path
     
     
+def _merge_anno(path2anno,
+                dir_names,
+                image_dir_path, 
+                path2save):
+    
+    df = collec_newanno(path2anno, dir_names, image_dir_path)
+    df_new = pd.DataFrame()
+    first_row = df.iloc[0].to_dict()
+    start_img_id = 1
+    dict_desc = {'image_id': start_img_id,
+                'file_name': first_row['new_file_name'].split('/')[-1],
+                'anno':first_row['anno'],
+                'img_desc':first_row['img_desc'],
+                'class_id':first_row['class_id'],
+                'class_names':first_row['class_names'],
+    }
+    print(dict_desc)
+    df_new = pd.concat([df_new, pd.DataFrame([dict_desc])], ignore_index=True)  
+    for row in df.iterrows():
+        if row[0] == 0:
+            continue
+        current_fname = row[1]['new_file_name']
+        
+        if current_fname in list(df_new.file_name):
+            index = df_new.index[df_new.file_name == current_fname]
+            if len(index) == 1:
+                index = index[0]
+            else:
+                assert "index len > 1"
+            old_dict = df_new.iloc[index].to_dict()
+            anno = old_dict['anno'].copy()
+            L = len(anno)
+            anno += [{'id': a['id'],
+                    'image_id': old_dict['image_id'],
+                    'category_id': a['category_id'],
+                    'segmentation': a['segmentation'],
+                    'area':a['area'],
+                    'bbox':a['bbox'],
+                    'iscrowd':a['iscrowd'],
+                    'attributes':a['attributes']
+                    } for a in row[1]['anno']]
+            print(L, len(anno))
+
+            dict_desc = {'image_id': old_dict['image_id'],
+                        'file_name': old_dict['file_name'],
+                        'img_desc':old_dict['img_desc'],
+                        'class_id':old_dict['class_id'],
+                        'class_names':old_dict['class_names'],
+                        'anno': anno}
+            df_new.iloc[index] = dict_desc.copy()
+        else:
+            start_img_id+=1
+            row[1]
+            dict_desc = {'image_id': start_img_id,
+                'file_name': row[1]['new_file_name'].split('/')[-1],
+                'anno':row[1]['anno'],
+                'img_desc':row[1]['img_desc'],
+                'class_id':row[1]['class_id'],
+                'class_names':row[1]['class_names']}
+            
+            print(dict_desc['file_name'])
+            df_new = pd.concat([df_new, pd.DataFrame([dict_desc])], ignore_index=True)  
+    new_anno_path  = create_json(df_new, new_anno_name = path2save)
+
+
+if __name__ == "__main__":
+    # _merge_anno("/storage/reshetnikov/open_pits_merge/annotations/",
+    #             ['anno', 'add_sam'],
+    #             "",
+    #             "/storage/reshetnikov/open_pits_merge/annotations/anno_merge2.json")

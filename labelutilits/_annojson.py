@@ -14,7 +14,8 @@ from PIL import Image
 
 from pycocotools.coco import COCO
 
-from ._path import *
+# from ._path import *
+from _path import *
 
 IMAGE_EXTENTIONS = ('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')
 IMAGE_AND_LABELS_EXTANTIONS = (*IMAGE_EXTENTIONS,'txt','csv','xml','json','txt')

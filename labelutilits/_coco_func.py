@@ -21,8 +21,9 @@ import matplotlib.colors as mcolors
 from pycocotools.coco import COCO
 
 
-from ._annojson import *
- 
+# from ._annojson import *
+from _annojson import *
+
 
 #----------------------------------------------
 def coco_image_dir_path(anno_path, image_dir_path=None, image_id = [1,2,3]):

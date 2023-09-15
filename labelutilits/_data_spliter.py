@@ -135,7 +135,44 @@ def iou_value(a, b):
     else:
         iou = 0
     return iou
- 
+
+def merge_yolo_annotation(path2label: str,
+                          path2image: str,
+                          path2other: str,
+                          path2save:  str,
+                          iou_tresh: float = 0.5,
+                          merge: bool = True):
+    """
+        Merge yolo annotations from path2label path and path2other path 
+        for labels whose intersection is less than the value of iou_tresh  
+    """
+    path2other = Path(path2other)
+    path2save  = Path(path2save)
+    f_images = {x.stem: x for x in Path(path2image).glob('*')}
+    for path in Path(path2label).glob('*.txt'):
+        with open(path,'r') as f1:
+            lines = f1.readlines()
+        with open(path2other / path.name, 'r' ) as f2:
+            other_lines = set(f2.readlines())
+
+        for main_line in lines:
+            box_1 = yolo2xyxy(*np.fromstring(main_line, dtype=float, sep=' ')[1:].tolist())
+            copy_set = other_lines.copy()
+            for o_line in other_lines:
+                box_2 = yolo2xyxy(*np.fromstring(o_line, dtype=float, sep=' ')[1:].tolist())
+
+                if iou_value(box_1,box_2) > iou_tresh: # удаляем box у которого пересечение с основным box  если внутри не добавлять
+                    copy_set.remove(o_line)
+            other_lines = copy_set.copy()
+        if merge:
+            all_lines = lines + list(other_lines)
+        else:
+            all_lines = list(other_lines)
+        with open(path2save / path.name, 'w') as f_out:
+            for line in list(all_lines):
+                f_out.writelines(line)
+    return True
+
 def merge_yolo_anno(path2label, 
                     path2image, 
                     path2other, 
@@ -212,15 +249,14 @@ if __name__ == "__main__":
 
     # k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/obb","/storage/reshetnikov/open_pits_merge/images/",
                     #   "/storage/reshetnikov/open_pits_merge/obb_fold/",4)
-    k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/test_max_line/","/storage/reshetnikov/open_pits_merge/images/",
-                      "/storage/reshetnikov/open_pits_merge/obb_mline_fold/",4)
-
-    # merge_yolo_anno('/storage/reshetnikov/openpits/labels/',
-    #                 '/storage/reshetnikov/openpits/images_resize/',
-    #                 '/storage/reshetnikov/openpits/sam_masks/yolo_format/',
-    #                 '/storage/reshetnikov/openpits/sam_masks/merge_labels/', 
-    #                 '/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt',
-    #                 0.5)
+    # k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/test_max_line/","/storage/reshetnikov/open_pits_merge/images/",
+    #                   "/storage/reshetnikov/open_pits_merge/obb_mline_fold/",4)
+    # k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/max_line/","/storage/reshetnikov/open_pits_merge/images/",
+    #                   "/storage/reshetnikov/open_pits_merge/obb_mline_fold/",4)
+    merge_yolo_annotation('/storage/reshetnikov/open_pits_merge/yolo_format/',
+                          '/storage/reshetnikov/openpits/images/',
+                          '/storage/reshetnikov/runs/runs/v8/detect/v8x_open_pits_best/labels',
+                          '/storage/reshetnikov/open_pits_merge/add_anno_net/', 0.5, False)
     
     # merge_yolo_anno('/storage/reshetnikov/part10/sam_yolo/',
     #                 '/storage/reshetnikov/part10/',

@@ -63,10 +63,44 @@ def clear_negative_values(x):
     else:
         return x
     
+
+def correct(points, W, H):
+        # points = [p1,p2,p3,p4]
+    p_new = None
+    for k, (x,y) in enumerate(points):
+        if x < 0:
+            
+            p_left = point_intersection(*points[k-1],x, y, 0, 0, 0, W)
+            if k == 3:
+                p_right = point_intersection(*points[0],x,y, 0, 0, 0,W)
+            else:
+                p_right = point_intersection(*points[k+1],x,y, 0, 0, 0,W)
+            
+            y_middle = p_right[1] + (p_right[1] - p_left[1])/2
+            p_new = round(p_left[0]), y_middle
+        elif y<0:
+            p_left = point_intersection(*points[k-1],x, y, 0, 0, H, 0)
+            if k == 3:
+                p_right = point_intersection(*points[0],x,y, 0, 0,H, 0)
+            else:
+                p_right = point_intersection(*points[k+1],x,y, 0, 0, H, 0)
+            
+            y_middle = p_right[1] + (p_right[1] - p_left[1])/2
+            p_new = round(p_left[0]), y_middle
+        if p_new:
+            points[k] = p_new
+            p_new = None
+    return points
+    
 class Yolo2Coco():
-    def __init__(self, path_label, path_image, path_save_json):
+    def __init__(self, 
+                 path_label: str = '',
+                 path_image: str = '',
+                 path_save_json: str = '', 
+                 step_sampling: int = 1):
         self.path_label = path_label
         self.path_image = path_image
+        self.step_sampling = step_sampling
         self.image_paths = {Path(p).stem: os.path.join(self.path_image, p) for p in list_images(self.path_image)}
         self.label_paths = {Path(p).stem: os.path.join(self.path_label, p) for p in list_ext(self.path_label)}
         self.path_save_json = path_save_json
@@ -155,25 +189,30 @@ class Yolo2Coco():
                     })
                 else:
                     x_coords, y_coords = segment[0::2]*w, segment[1::2]*h
+                    if len(x_coords) > 16:
+                        x_coords = x_coords[::self.step_sampling]
+                        y_coords = y_coords[::self.step_sampling]
                     coco_segment = []
                     for x,y in zip(x_coords,y_coords):
                         coco_segment.append(x)
                         coco_segment.append(y)
-
-                    annotations.append({
-                        "id": anno_id,
-                        "image_id": image_id,
-                        "category_id": int(o_cls) + 1,
-                        "segmentation": [coco_segment],
-                        "area": polygone_area(x_coords, y_coords),
-                        "bbox": segment2box(x_coords, y_coords),
-                        "iscrowd": 0,
-                    })
+                    
+                    area = polygone_area(x_coords, y_coords)
+                    if area > 625:
+                        annotations.append({
+                            "id": anno_id,
+                            "image_id": image_id,
+                            "category_id": int(o_cls) + 1,
+                            "segmentation": [coco_segment],
+                            "area": polygone_area(x_coords, y_coords),
+                            "bbox": segment2box(x_coords, y_coords),
+                            "iscrowd": 0,
+                        })
                 
                 if not o_cls in categories:
                     categories.append(int(o_cls))
                 anno_id+=1
-            
+        
         return annotations, categories
 
     def convert(self):
@@ -188,7 +227,7 @@ class Yolo2Coco():
         licenses = [{"url": "https://data.mendeley.com/v1/datasets/pfdbfpfygh/draft?preview=1",
                     "id": 1,
                     "name": "openpits asbestos"}]
-        class_names = { 1: "stone", 2:"asbest"}
+        class_names = { 1: "stone", 2:"asbest",3:"yolo_stone"}
         categories = [ {"id": _cls+1, "name": class_names[_cls+1], "supercategory": "" } for _cls in classes]
         data = {
             "info"       : info,
@@ -272,7 +311,8 @@ def coco2obb_maxline(path2json, path2save):
     # df_image.to_csv('/home/reshetnikov/asbest/yolov8_segmentation/notebook/images_names.csv')
 
     fname = str(df_image[df_image.id ==  frame.iloc[0].image_id]['file_name'].values[0].split('.')[0])    
-    file_out = open(Path(path2save) / (fname + ".txt" ), 'w')   
+    file_out = open(Path(path2save) / (fname + ".txt" ), 'w') 
+    number = 0  
     for k, row in frame.iterrows():
 
         IMAGE_W = image_dict[row.image_id]['width']
@@ -330,14 +370,31 @@ def coco2obb_maxline(path2json, path2save):
         obx3 = ax2 - dx
         oby3 = ay2 + dy
 
-        obx1 = clear_negative_values(obx1)
-        oby1 = clear_negative_values(oby1)
-        obx2 = clear_negative_values(obx2)
-        oby2 = clear_negative_values(oby2)
-        obx3 = clear_negative_values(obx3)
-        oby3 = clear_negative_values(oby3)
-        obx4 = clear_negative_values(obx4)
-        oby4 = clear_negative_values(oby4)
+        if any(x<0 for x in [obx1, oby1, obx2, oby2, obx3, oby3, obx4, oby4]):
+            # print('pass ', int(obx1), int(oby1), int(obx2), int(oby2), int(obx3), int(oby3), int(obx4), int(oby4))
+            number+=1
+            try:
+                # points = correct([(obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4)])
+                points = []
+                for x,y in [(obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4)]:
+                    x = clear_negative_values(x)
+                    y = clear_negative_values(y)
+                    points.append((x,y))
+                obx1, oby1 = points[0]
+                obx2, oby2 = points[1]
+                obx3, oby3 = points[2]
+                obx4, oby4 = points[3]
+                # point_intersection()
+            except:
+                continue
+        # obx1 = clear_negative_values(obx1)
+        # oby1 = clear_negative_values(oby1)
+        # obx2 = clear_negative_values(obx2)
+        # oby2 = clear_negative_values(oby2)
+        # obx3 = clear_negative_values(obx3)
+        # oby3 = clear_negative_values(oby3)
+        # obx4 = clear_negative_values(obx4)
+        # oby4 = clear_negative_values(oby4)
         op1, op2, op3, op4 = correct_sequence((obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4))
         
         cls_id = 'stone'
@@ -353,21 +410,9 @@ def coco2obb_maxline(path2json, path2save):
             line = "{:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {} 0\n".format( *op1, *op2, *op3, *op4, cls_id)
             file_out.write(line)
     file_out.close()
+    print('Quantity outside the image ', number)
+
 if __name__ == "__main__":
-
-
-    # conv = Yolo2Coco("../dataset/segmentation/train", "../dataset/segmentation/train", 
-    #         "../dataset/segmentation/train/anno_train.json")
-    # conv.convert()
-
-
-    # conv = Yolo2Coco("../dataset/segmentation/test", "../dataset/segmentation/test", 
-    #         "../dataset/segmentation/test/anno_test.json")
-    # conv.convert()
-    # conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/train/", 
-    #              "/storage/reshetnikov/openpits/fold/Fold_0/train/", 
-    #              "/storage/reshetnikov/openpits/fold/Fold_0/anno_train.json")
-    # conv.convert()
     # conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/test/", 
     #                 "/storage/reshetnikov/openpits/fold/Fold_0/test/", 
     #                 "/storage/reshetnikov/openpits/fold/Fold_0/anno_test.json")
@@ -375,17 +420,26 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Convert labels to other coordinate system.')
     parser.add_argument('--inpt_dir', type=str,
-                        help='Input directory with files.', default = "/storage/reshetnikov/open_pits_merge/annotations/annotations.json")
+                        help='Input directory with labels files.', default = "/storage/reshetnikov/open_pits_merge/annotations/annotations.json")
     
     parser.add_argument('--save_dir', type=str, help='Save directory with converted labels files.', 
                         default= '/storage/reshetnikov/open_pits_merge/obb')
     
-    parser.add_argument('--type', type = str , default='obb_maxline', help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files")
+        
+    parser.add_argument('--image_dir', type=str, help='Save directory with converted labels files.', 
+                         default= '/storage/reshetnikov/open_pits_merge/images')
+    parser.add_argument('--type', type = str , default='obb_maxline', help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files \n")
     args = parser.parse_args()
     print(args, args.type)
     if args.type == 'coco2obb':
         coco2obb(args.inpt_dir, args.save_dir)
     elif args.type == 'obb_maxline':
         coco2obb_maxline(args.inpt_dir, args.save_dir)
+
+    elif args.type == 'yolo2coco':
+        conv = Yolo2Coco(args.inpt_dir,
+                         args.image_dir,
+                         args.save_dir)
+        conv.convert()
         # coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
 
