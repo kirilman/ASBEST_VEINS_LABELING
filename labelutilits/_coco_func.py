@@ -21,8 +21,8 @@ import matplotlib.colors as mcolors
 from pycocotools.coco import COCO
 
 
-# from ._annojson import *
-from _annojson import *
+from ._annojson import *
+# from _annojson import *
 
 
 #----------------------------------------------

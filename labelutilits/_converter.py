@@ -15,7 +15,7 @@ from pycocotools.coco import COCO
 from utils.geometry import coords_main_line, coords_other_line, coords_obb, coords_max_line, distance, position, distance_to_perpendicular
 from utils.geometry import point_intersection, vec_from_points, line_from_points, dot_product_angle, correct_sequence
 import argparse
-
+from pylabel import importer
 
 def polygone_area(x,y):
     return 0.5 * np.array(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
@@ -305,14 +305,12 @@ def coco2obb_maxline(path2json, path2save):
     frame = pd.DataFrame(coco.anns).T
     df_image = pd.DataFrame(coco.imgs).T
     image_dict = df_image.T.to_dict()
-    fname = str(df_image[df_image.id ==  frame.iloc[0].image_id]['file_name'].values[0].split('.')[0])    
-    file_out = open(Path(path2save) / (fname + ".txt" ), 'w')    
     df_image = pd.DataFrame(coco.imgs).T
-    # df_image.to_csv('/home/reshetnikov/asbest/yolov8_segmentation/notebook/images_names.csv')
-
     fname = str(df_image[df_image.id ==  frame.iloc[0].image_id]['file_name'].values[0].split('.')[0])    
     file_out = open(Path(path2save) / (fname + ".txt" ), 'w') 
+    print(fname, file_out)
     number = 0  
+    current_line = 0
     for k, row in frame.iterrows():
 
         IMAGE_W = image_dict[row.image_id]['width']
@@ -409,8 +407,16 @@ def coco2obb_maxline(path2json, path2save):
             file_out = open(Path(path2save) / (fname + ".txt" ), 'a')    
             line = "{:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {} 0\n".format( *op1, *op2, *op3, *op4, cls_id)
             file_out.write(line)
+        current_line+=1
+        if current_line%1000 == 0:
+            print(current_line,' ',current_fname)
     file_out.close()
     print('Quantity outside the image ', number)
+
+def coco2box(path2json, path2images, path2save):
+    dataset = importer.ImportCoco(path=path2json, path_to_images=path2images)
+    dataset.export.ExportToYoloV5(path2save)
+
 
 if __name__ == "__main__":
     # conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/test/", 
@@ -420,10 +426,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Convert labels to other coordinate system.')
     parser.add_argument('--inpt_dir', type=str,
-                        help='Input directory with labels files.', default = "/storage/reshetnikov/open_pits_merge/annotations/annotations.json")
+                        help='Input directory with labels files.', default = "/storage/reshetnikov/open_pits_merge/annotations/merge_add_sam/anno_merge2.json")
     
     parser.add_argument('--save_dir', type=str, help='Save directory with converted labels files.', 
-                        default= '/storage/reshetnikov/open_pits_merge/obb')
+                        default= '/storage/reshetnikov/open_pits_merge/add_sam/max_line/')
     
         
     parser.add_argument('--image_dir', type=str, help='Save directory with converted labels files.', 
@@ -441,5 +447,7 @@ if __name__ == "__main__":
                          args.image_dir,
                          args.save_dir)
         conv.convert()
+    elif args.type == 'coco2yolo':
+        coco2box(args.inpt_dir, args.image_dir,args.save_dir)
         # coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
 

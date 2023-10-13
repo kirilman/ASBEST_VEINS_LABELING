@@ -20,15 +20,15 @@ import matplotlib.colors as mcolors
 from pycocotools.coco import COCO
 
 
-# from ._annojson  import *
-# from ._coco_func import *
-# from ._path      import *
-# from .OLD._coco_func import _get_coco_annotations
+from ._annojson  import *
+from ._coco_func import *
+from ._path      import *
+from .OLD._coco_func import _get_coco_annotations
       
-from _annojson  import *
-from _coco_func import *
-from _path      import *
-from OLD._coco_func import _get_coco_annotations
+# from _annojson  import *
+# from _coco_func import *
+# from _path      import *
+# from OLD._coco_func import _get_coco_annotations
         
 
 #----------------------------------------------
@@ -483,3 +483,4 @@ if __name__ == "__main__":
     #             ['anno', 'add_sam'],
     #             "",
     #             "/storage/reshetnikov/open_pits_merge/annotations/anno_merge2.json")
+    pass

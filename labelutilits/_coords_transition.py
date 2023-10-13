@@ -2,8 +2,8 @@ import numpy as np
 import sys
 import os
 sys.path.append(os.getcwd())
-from _path import list_ext, create_dir
-# from ._path import list_ext, create_dir
+# from _path import list_ext, create_dir
+from ._path import list_ext, create_dir
 
 from pathlib import Path
 import json
@@ -140,3 +140,4 @@ if __name__ == "__main__":
     #                               "/home/reshetnikov/asbest/yolov8_segmentation/mAP/input/detect_convert/")
     # convert_sam_to_yolo("/storage/reshetnikov/openpits/sam_masks/", "/storage/reshetnikov/openpits/sam_masks/yolo_format", 500)
     # convert_sam_to_yolo("/storage/reshetnikov/part10/sam_labels/", "/storage/reshetnikov/part10/sam_yolo", 500)
+    pass
