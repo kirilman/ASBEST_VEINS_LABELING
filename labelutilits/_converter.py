@@ -413,6 +413,55 @@ def coco2obb_maxline(path2json, path2save):
     file_out.close()
     print('Quantity outside the image ', number)
 
+def coco2box_keypoints(path2json, path2save):
+    """
+        Convert coco format to bounding box with keypoint for max line 
+
+    Args:
+        path2json (_type_): _description_
+        path2save (_type_): _description_
+    """
+    coco = COCO(path2json)
+    frame = pd.DataFrame(coco.anns).T
+    df_image = pd.DataFrame(coco.imgs).T
+    image_dict = df_image.T.to_dict()
+    print(image_dict)
+    fname = str(df_image[df_image.id ==  frame.iloc[0].image_id]['file_name'].values[0].split('.')[0])    
+    file_out = open(Path(path2save) / (fname + ".txt" ), 'w')    
+
+    for k, row in frame.iterrows():
+        IMAGE_W = image_dict[row.image_id]['width']
+        IMAGE_H = image_dict[row.image_id]['height']
+        
+        try:
+            x_coords = np.array(row.segmentation[0][::2])/IMAGE_W
+            y_coords = np.array(row.segmentation[0][1::2])/IMAGE_H
+        except:
+            print("Failed to obtain ellipse parameters for ", row)
+            continue
+        box = np.array(row.bbox, dtype=np.float64)
+        box[:2] += box[2:] / 2  # xy top-left corner to center
+        box[[0, 2]] /= IMAGE_W  # normalize x
+        box[[1, 3]] /= IMAGE_H  # normalize y
+        xc, yc, w, h = box
+        xm1, ym1, xm2, ym2 = coords_max_line(x_coords,y_coords)
+        
+        cls_id = row.category_id - 1
+        # cls_id = 'stone'
+        current_fname = str(df_image[df_image.id ==  row.image_id]['file_name'].values[0].split('.')[0])
+        if fname == current_fname:
+            line = "{} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} \n".format( cls_id, xc, yc, w, h, xm1, ym1, xm2, ym2)
+            file_out.write(line)
+            
+        else:
+            file_out.close()
+            fname = current_fname
+            file_out = open(Path(path2save) / (fname + ".txt" ), 'a')    
+            line = "{} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} \n".format( cls_id, xc, yc, w, h, xm1, ym1, xm2, ym2)
+            file_out.write(line)
+    file_out.close()
+    return True
+
 def coco2box(path2json, path2images, path2save):
     dataset = importer.ImportCoco(path=path2json, path_to_images=path2images)
     dataset.export.ExportToYoloV5(path2save)
@@ -450,4 +499,5 @@ if __name__ == "__main__":
     elif args.type == 'coco2yolo':
         coco2box(args.inpt_dir, args.image_dir,args.save_dir)
         # coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
-
+    elif args.type == 'keypoint':
+        coco2box_keypoints(args.inpt_dir, args.save_dir)
