@@ -28,6 +28,7 @@ from utils.geometry import (
     line_from_points,
     dot_product_angle,
     correct_sequence,
+    coords_other_line_by_coords,
 )
 import argparse
 from pylabel import importer
@@ -493,7 +494,7 @@ def coco2obb_maxline(path2json, path2save):
     print("Quantity outside the image ", number)
 
 
-def coco2box_keypoints(path2json, path2save):
+def coco2box_keypoints(path2json, path2save, second_line=None):
     """
         Convert coco format to bounding box with keypoint for max line
 
@@ -523,36 +524,37 @@ def coco2box_keypoints(path2json, path2save):
         except:
             print("Failed to obtain ellipse parameters for ", row)
             continue
+        if row.bbox is np.nan:
+            continue
         box = np.array(row.bbox, dtype=np.float64)
         box[:2] += box[2:] / 2  # xy top-left corner to center
         box[[0, 2]] /= IMAGE_W  # normalize x
         box[[1, 3]] /= IMAGE_H  # normalize y
         xc, yc, w, h = box
+        if len(x_coords) < 4:
+            print(k)
+            continue
         xm1, ym1, xm2, ym2 = coords_max_line(x_coords, y_coords)
-
         cls_id = row.category_id - 1
         # cls_id = 'stone'
         current_fname = str(
             df_image[df_image.id == row.image_id]["file_name"].values[0].split(".")[0]
         )
+        line = (cls_id, xc, yc, w, h, xm1, ym2, xm2, ym2)
+
+        if second_line:
+            xs1, ys1, xs2, ys2 = coords_other_line_by_coords(x_coords, y_coords)
+            line = (cls_id, xc, yc, w, h, xm1, ym1, xm2, ym2, xs1, ys1, xs2, ys2)
+
+        write_line = ("%g " * len(line)).rstrip() % line + "\n"
         if fname == current_fname:
-            line = (
-                "{} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} \n".format(
-                    cls_id, xc, yc, w, h, xm1, ym1, xm2, ym2
-                )
-            )
-            file_out.write(line)
+            file_out.write(write_line)
 
         else:
             file_out.close()
             fname = current_fname
             file_out = open(Path(path2save) / (fname + ".txt"), "a")
-            line = (
-                "{} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} \n".format(
-                    cls_id, xc, yc, w, h, xm1, ym1, xm2, ym2
-                )
-            )
-            file_out.write(line)
+            file_out.write(write_line)
     file_out.close()
     return True
 
@@ -594,7 +596,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--type",
         type=str,
-        default="obb_maxline",
+        default="keypoint",
         help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files \n",
     )
     args = parser.parse_args()
@@ -611,4 +613,4 @@ if __name__ == "__main__":
         coco2box(args.inpt_dir, args.image_dir, args.save_dir)
         # coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
     elif args.type == "keypoint":
-        coco2box_keypoints(args.inpt_dir, args.save_dir)
+        coco2box_keypoints(args.inpt_dir, args.save_dir, True)

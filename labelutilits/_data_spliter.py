@@ -281,10 +281,10 @@ if __name__ == "__main__":
     # k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/test_max_line/","/storage/reshetnikov/open_pits_merge/images/",
     #                   "/storage/reshetnikov/open_pits_merge/obb_mline_fold/",4)
     k_fold_split_yolo(
-        "/storage/reshetnikov/open_pits_merge/yolo_keypoint",
-        "/storage/reshetnikov/open_pits_merge/images/",
-        "/storage/reshetnikov/open_pits_merge/keypoint2/",
-        3,
+        "/storage/reshetnikov/open_pits_merge/keypoints_2",
+        "/storage/reshetnikov/open_pits_merge/image_jpg/",
+        "/storage/reshetnikov/open_pits_merge/keypoint/kpnt2/",
+        4,
     )
     # merge_yolo_annotation('/storage/reshetnikov/open_pits_merge/yolo_format/',
     #                       '/storage/reshetnikov/openpits/images/',
