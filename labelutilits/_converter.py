@@ -614,3 +614,4 @@ if __name__ == "__main__":
         # coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
     elif args.type == "keypoint":
         coco2box_keypoints(args.inpt_dir, args.save_dir, True)
+
