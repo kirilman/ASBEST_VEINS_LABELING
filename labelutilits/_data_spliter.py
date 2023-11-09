@@ -2,8 +2,8 @@ from sklearn.model_selection import KFold
 import yaml
 import numpy as np
 from pathlib import Path
-from _coords_transition import yolo2xyxy, xywh2xyxy
-from _path import list_ext, list_images, _cp_file_list
+from ._coords_transition import yolo2xyxy, xywh2xyxy
+from ._path import list_ext, list_images, _cp_file_list
 import shutil
 import cv2
 from ultralytics import YOLO
@@ -170,17 +170,15 @@ def merge_yolo_annotation(
             other_lines = set(f2.readlines())
 
         for main_line in lines:
-            box_1 = yolo2xyxy(
-                *np.fromstring(main_line, dtype=float, sep=" ")[1:].tolist()
-            )
+            a = (np.fromstring(main_line, dtype=float, sep=" ")[1:]).reshape(1, -1)
+            box_1 = xywh2xyxy(a)
             copy_set = other_lines.copy()
             for o_line in other_lines:
-                box_2 = yolo2xyxy(
-                    *np.fromstring(o_line, dtype=float, sep=" ")[1:].tolist()
+                box_2 = xywh2xyxy(
+                    (np.fromstring(o_line, dtype=float, sep=" ")[1:]).reshape(1, -1)
                 )
-
                 if (
-                    iou_value(box_1, box_2) > iou_tresh
+                    iou_value(box_1[0, :4], box_2[0, :4]) > iou_tresh
                 ):  # удаляем box у которого пересечение с основным box  если внутри не добавлять
                     copy_set.remove(o_line)
             other_lines = copy_set.copy()
@@ -191,7 +189,6 @@ def merge_yolo_annotation(
         with open(path2save / path.name, "w") as f_out:
             for line in list(all_lines):
                 f_out.writelines(line)
-    return True
 
 
 def merge_yolo_anno(
@@ -250,6 +247,7 @@ def filter_bboxs_by_network(
     path2save,
     path2netmodel="/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt",
     iou_tresh=0.4,
+    score=0.5,
 ):
     path2save = Path(path2save)
     model = YOLO(path2netmodel)
@@ -263,7 +261,7 @@ def filter_bboxs_by_network(
         bbox_coords = xywh2xyxy(np.array(a))
         f_image = str(f_images[path.stem])
         image_with_bbox = ImageWithBoxs(f_image, bbox_coords)
-        indexes = neyral_filter(image_with_bbox, model, valid_score=0.7)
+        indexes = neyral_filter(image_with_bbox, model, valid_score=score)
         filter_lines = [lines[k] for k in indexes]
         print(len(bbox_coords), len(filter_lines))
 
