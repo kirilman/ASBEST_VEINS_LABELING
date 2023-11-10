@@ -168,7 +168,7 @@ def merge_yolo_annotation(
             lines = f1.readlines()
         with open(path2other / path.name, "r") as f2:
             other_lines = set(f2.readlines())
-
+        count_del = 0
         for main_line in lines:
             a = (np.fromstring(main_line, dtype=float, sep=" ")[1:]).reshape(1, -1)
             box_1 = xywh2xyxy(a)
@@ -181,7 +181,9 @@ def merge_yolo_annotation(
                     iou_value(box_1[0, :4], box_2[0, :4]) > iou_tresh
                 ):  # удаляем box у которого пересечение с основным box  если внутри не добавлять
                     copy_set.remove(o_line)
+                    count_del += 1
             other_lines = copy_set.copy()
+        print(f"Удалили {count_del} строк из  {len(lines)}")
         if merge:
             all_lines = lines + list(other_lines)
         else:

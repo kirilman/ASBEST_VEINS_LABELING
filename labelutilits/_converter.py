@@ -4,7 +4,7 @@ import pandas as pd
 
 from tqdm import main
 
-from _path import list_ext, list_images
+from ._path import list_ext, list_images
 
 # from ._path import list_ext, list_images
 
@@ -13,7 +13,7 @@ from PIL import Image
 import json
 from typing import List
 from pycocotools.coco import COCO
-from utils.geometry import (
+from .utils.geometry import (
     coords_main_line,
     coords_other_line,
     coords_obb,
@@ -22,7 +22,7 @@ from utils.geometry import (
     position,
     distance_to_perpendicular,
 )
-from utils.geometry import (
+from .utils.geometry import (
     point_intersection,
     vec_from_points,
     line_from_points,
@@ -196,7 +196,7 @@ class Yolo2Coco:
         categories : list[int], classes
 
         """
-        anno_id = 1
+        anno_id = 0
         annotations = []
         categories = []
         fname_list = list_ext(self.path_label, "txt")
@@ -220,7 +220,7 @@ class Yolo2Coco:
                         {
                             "id": anno_id,
                             "image_id": image_id,
-                            "category_id": int(o_cls) + 1,
+                            "category_id": int(o_cls),
                             "segmentation": [box2segment(bbox)],
                             "area": bbox[2] * bbox[3],
                             "bbox": bbox,
@@ -243,7 +243,7 @@ class Yolo2Coco:
                             {
                                 "id": anno_id,
                                 "image_id": image_id,
-                                "category_id": int(o_cls) + 1,
+                                "category_id": int(o_cls),
                                 "segmentation": [coco_segment],
                                 "area": polygone_area(x_coords, y_coords),
                                 "bbox": segment2box(x_coords, y_coords),
@@ -275,9 +275,9 @@ class Yolo2Coco:
                 "name": "openpits asbestos",
             }
         ]
-        class_names = {1: "stone", 2: "asbest", 3: "yolo_stone"}
+        class_names = {0: "stone", 1: "asbest", 2: "yolo_stone"}
         categories = [
-            {"id": _cls + 1, "name": class_names[_cls + 1], "supercategory": ""}
+            {"id": _cls, "name": class_names[_cls], "supercategory": ""}
             for _cls in classes
         ]
         data = {
@@ -614,4 +614,3 @@ if __name__ == "__main__":
         # coco2obb("/storage/reshetnikov/open_pits_merge/annotations/annotations.json", '/storage/reshetnikov/open_pits_merge/obb')
     elif args.type == "keypoint":
         coco2box_keypoints(args.inpt_dir, args.save_dir, True)
-
