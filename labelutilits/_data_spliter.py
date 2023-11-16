@@ -38,18 +38,26 @@ class ImageWithBoxs:
 
 
 def k_fold_split_yolo(
-    path2label: str, path2image: str, path_save_fold: str, number_fold: int = 4
+    path2label: str,
+    path2image: str,
+    path_save_fold: str,
+    number_fold: int = 4,
+    random_seed=42,
 ):
     path2label = Path(path2label)
     path2image = Path(path2image)
     l_labels = sorted(list_ext(path2label), key=lambda x: x.split(".")[0])
-    l_images = sorted(list_images(path2image), key=lambda x: x.split(".")[0])
+    l_images = list_images(path2image)
+    l_images = sorted(
+        filter(lambda x: Path(x).stem in [Path(x).stem for x in l_labels], l_images)
+    )
     if len(l_labels) != len(l_images):
         print(
             "The length of arrays does not match {} and {}".format(
-                len(l_labels), len(l_images)
-            )
-        )
+                len(l_labels), len(l_images)))
+        for a, b in zip(l_images, l_labels):
+            print(a, " ", b)
+
     else:
         pass
 
@@ -58,7 +66,7 @@ def k_fold_split_yolo(
         shutil.rmtree(path_save_fold)
     path_save_fold.mkdir()
 
-    kfold = KFold(number_fold, shuffle=True, random_state=RANDOM_STATE)
+    kfold = KFold(number_fold, shuffle=True, random_state=random_seed)
     for kf, (train_indxs, test_indxs) in enumerate(kfold.split(l_labels)):
         name = "Fold_{}".format(kf)
         path_2_fold = path_save_fold / name

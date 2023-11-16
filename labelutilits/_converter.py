@@ -494,7 +494,7 @@ def coco2obb_maxline(path2json, path2save):
     print("Quantity outside the image ", number)
 
 
-def coco2box_keypoints(path2json, path2save, second_line=None):
+def coco2box_keypoints(path2json, path2save, second_line=True):
     """
         Convert coco format to bounding box with keypoint for max line
 
