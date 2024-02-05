@@ -4,32 +4,48 @@ import pandas as pd
 
 from tqdm import main
 
-from ._path import list_ext, list_images
-
-# from ._path import list_ext, list_images
+try:
+    from ._path import list_ext, list_images
+except:
+    from _path import list_ext, list_images
 
 from pathlib import Path
 from PIL import Image
 import json
 from typing import List
 from pycocotools.coco import COCO
-from .utils.geometry import (
-    coords_main_line,
-    coords_other_line,
-    coords_obb,
-    coords_max_line,
-    distance,
-    position,
-    distance_to_perpendicular,
-)
-from .utils.geometry import (
-    point_intersection,
-    vec_from_points,
-    line_from_points,
-    dot_product_angle,
-    correct_sequence,
-    coords_other_line_by_coords,
-)
+try:
+    from .utils.geometry import (
+        coords_other_line,
+        point_intersection,
+        vec_from_points,
+        line_from_points,
+        dot_product_angle,
+        correct_sequence,
+        coords_other_line_by_coords,
+        coords_max_line,
+        position,
+        distance,
+        distance_to_perpendicular,
+        coords_main_line,
+        coords_other_line,
+    )
+except:
+    from utils.geometry import (
+        coords_other_line,
+        point_intersection,
+        vec_from_points,
+        line_from_points,
+        dot_product_angle,
+        correct_sequence,
+        coords_other_line_by_coords,
+        coords_max_line,
+        position,
+        distance,
+        distance_to_perpendicular,
+        coords_main_line,
+        coords_other_line,
+    )
 import argparse
 from pylabel import importer
 
@@ -365,7 +381,7 @@ def coco2obb(path2json, path2save):
     return True
 
 
-def coco2obb_maxline(path2json, path2save):
+def coco2obb_maxline(path2json, path2save, norm=True):
     coco = COCO(path2json)
     frame = pd.DataFrame(coco.anns).T
     df_image = pd.DataFrame(coco.imgs).T
@@ -464,16 +480,18 @@ def coco2obb_maxline(path2json, path2save):
         op1, op2, op3, op4 = correct_sequence(
             (obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4)
         )
+        data = np.hstack((op1, op2, op3, op4))
+        if norm:
+            data[::2] = data[::2] / IMAGE_W
+            data[1::2] = data[1::2] / IMAGE_H
 
-        cls_id = "stone"
+        cls_id = 0
         current_fname = str(
             df_image[df_image.id == row.image_id]["file_name"].values[0].split(".")[0]
         )
         if fname == current_fname:
-            line = (
-                "{:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {} 0\n".format(
-                    *op1, *op2, *op3, *op4, cls_id
-                )
+            line = "{:d} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} \n".format(
+                cls_id, *data
             )
             file_out.write(line)
 
@@ -481,10 +499,8 @@ def coco2obb_maxline(path2json, path2save):
             file_out.close()
             fname = current_fname
             file_out = open(Path(path2save) / (fname + ".txt"), "a")
-            line = (
-                "{:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {} 0\n".format(
-                    *op1, *op2, *op3, *op4, cls_id
-                )
+            line = "{:d} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} \n".format(
+                cls_id, *data
             )
             file_out.write(line)
         current_line += 1

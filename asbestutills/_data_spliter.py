@@ -7,6 +7,7 @@ from ._path import list_ext, list_images, _cp_file_list
 import shutil
 import cv2
 from ultralytics import YOLO
+from tqdm import tqdm
 
 RANDOM_STATE = 101
 
@@ -215,11 +216,14 @@ def merge_yolo_annotation(
         for l in all_lines:
             e = np.fromstring(l, dtype=float, sep=" ")[1:5]
             t.append(e)
-
+        len_before = len(all_lines)
         # t = np.vstack([np.fromstring(l[1:5], dtype=float, sep=" ") for l in all_lines])
         boxes = np.array(t)
-        indexs = non_max_suppression(boxes, [1] * len(boxes))
+        indexs = non_max_suppression(
+            boxes, [1.0] * len(boxes), min_score=0.1, iou_score=0.95
+        )
         all_lines = [all_lines[i] for i in indexs.astype(int)]
+        print(f"len before {len_before}, box {len(boxes)} after {len(all_lines)}")
         with open(path2save / path.name, "w") as f_out:
             for line in all_lines:
                 f_out.writelines(line)
@@ -313,9 +317,9 @@ if __name__ == "__main__":
     # k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/test_max_line/","/storage/reshetnikov/open_pits_merge/images/",
     #                   "/storage/reshetnikov/open_pits_merge/obb_mline_fold/",4)
     k_fold_split_yolo(
-        "/storage/reshetnikov/open_pits_merge/segment/labels/anno_sam_10_25",
+        "/storage/reshetnikov/open_pits_merge/obb_yolo8/anno/",
         "/storage/reshetnikov/open_pits_merge/image_jpg/",
-        "/storage/reshetnikov/open_pits_merge/segment/Fold/",
+        "/storage/reshetnikov/open_pits_merge/obb_yolo8/Fold/",
         4,
     )
     # merge_yolo_annotation('/storage/reshetnikov/open_pits_merge/yolo_format/',
