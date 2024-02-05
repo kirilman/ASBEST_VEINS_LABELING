@@ -4,7 +4,7 @@ import json
 from PIL import Image
 import pandas as pd
 from pprint import pprint
- 
+from pathlib import Path
 
 from ._annotation_base import (_set_cat_names,
                                _cat_ids,
@@ -30,8 +30,9 @@ from ._coco_base import (_ann2mask,
                          _masks2d,
                          _image_with_bbox)
 
+from .utils.geometry import segment2obb
 
-    
+
 class Annotation():
     ''' 
     Class for annotation in json coco format processing.
@@ -367,6 +368,27 @@ class Annotation():
         '''
         anns = self.get_annotations(image_id = image_id, cat_ids = cat_ids)
         return [x['bbox'] for x in anns]
+    
+    def get_obboxes(self, image_id, cat_ids = None):
+      '''
+        Get orientide bounding boxes for image
+        
+        Returns
+        ----------
+        list[list]: annotation for bounding boxes 
+          for image in format [x0,y0,x1,y1,x2,y2,x3,y3].
+      '''
+      anno = self.get_annotations(image_id = image_id, cat_ids = cat_ids)
+      anns = []
+      for s in anno:
+        x_coords = np.array(s['segmentation'][0][::2])  # /IMAGE_W
+        y_coords = np.array(s['segmentation'][0][1::2])
+        try:
+          x0, y0, x1, y1, x2, y2, x3, y3 = segment2obb(x_coords,y_coords)
+          anns.append([x0, y0, x1, y1, x2, y2, x3, y3])
+        except Exception as e:
+          print(e)
+      return anns
     
     #----------------------------------------------- 
     def get_masks(self,image_id, cat_ids = None, mode = 'instances'):

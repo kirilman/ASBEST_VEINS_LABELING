@@ -310,7 +310,9 @@ class Yolo2Coco:
 
 def coco2obb(path2json, path2save):
     """
-        Convert coco polygon coordinates to obb format coordinates. Save the result in *.txt files in path2save directory
+        Convert coco polygon coordinates to obb format coordinates.
+        The obbox is rotated along the main axis of the approximating ellipse!
+        Save the result in *.txt files in path2save directory
     Args:
         path2json (str): json with coco format
         path2save (str): save directory
@@ -452,23 +454,23 @@ def coco2obb_maxline(path2json, path2save, norm=True):
         obx3 = ax2 - dx
         oby3 = ay2 + dy
 
-        if any(x < 0 for x in [obx1, oby1, obx2, oby2, obx3, oby3, obx4, oby4]):
-            # print('pass ', int(obx1), int(oby1), int(obx2), int(oby2), int(obx3), int(oby3), int(obx4), int(oby4))
-            number += 1
-            try:
-                # points = correct([(obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4)])
-                points = []
-                for x, y in [(obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4)]:
-                    x = clear_negative_values(x)
-                    y = clear_negative_values(y)
-                    points.append((x, y))
-                obx1, oby1 = points[0]
-                obx2, oby2 = points[1]
-                obx3, oby3 = points[2]
-                obx4, oby4 = points[3]
-                # point_intersection()
-            except:
-                continue
+        # if any(x < 0 for x in [obx1, oby1, obx2, oby2, obx3, oby3, obx4, oby4]):
+        #     # print('pass ', int(obx1), int(oby1), int(obx2), int(oby2), int(obx3), int(oby3), int(obx4), int(oby4))
+        #     number += 1
+        #     try:
+        #         # points = correct([(obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4)])
+        #         points = []
+        #         for x, y in [(obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4)]:
+        #             x = clear_negative_values(x)
+        #             y = clear_negative_values(y)
+        #             points.append((x, y))
+        #         obx1, oby1 = points[0]
+        #         obx2, oby2 = points[1]
+        #         obx3, oby3 = points[2]
+        #         obx4, oby4 = points[3]
+        #         # point_intersection()
+        #     except:
+        #         continue
         # obx1 = clear_negative_values(obx1)
         # oby1 = clear_negative_values(oby1)
         # obx2 = clear_negative_values(obx2)

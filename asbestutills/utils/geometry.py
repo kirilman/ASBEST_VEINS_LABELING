@@ -235,3 +235,58 @@ def coords_other_line_by_coords(x, y):
                 x_c2, y_c2 = xi, yi
 
     return x_c1, y_c1, x_c2, y_c2
+
+
+def segment2obb(x_coords, y_coords):
+    """
+        Get oriented box coordinates from segmentation mask coordinates (x_coords, y_coords)
+        Returns:
+        x0, y0, x1, y1, x2, y2, x3, y3 
+    """
+    ax1, ay1, ax2, ay2 = coords_max_line(x_coords, y_coords)
+    if ax2 > ax1 and ay2 > ay1:
+        ax2, ax1 = ax1, ax2
+        ay2, ay1 = ay1, ay2
+    Points = [(x, y) for x, y in zip(x_coords, y_coords)]
+    max_dist_left = 0
+    max_dist_right = 0
+    for point in Points:
+        if position(point[0], point[1], ax1, ay1, ax2, ay2) > 0:
+            A, B, C = line_from_points((ax1, ay1), (ax2, ay2))
+            d = distance_to_perpendicular(A, B, C, point[0], point[1])
+            if abs(d) > max_dist_right:
+                max_dist_right = d
+                bx2, by2 = point
+        else:
+            A, B, C = line_from_points((ax1, ay1), (ax2, ay2))
+            d = distance_to_perpendicular(A, B, C, point[0], point[1])
+            if abs(d) > max_dist_left:
+                max_dist_left = d
+                bx1, by1 = point
+    
+    px1, px2 = point_intersection(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2)
+    n1, n2 = vec_from_points((px1, px2), (ax1, ay1))
+    m1, m2 = vec_from_points((px1, px2), (px1 + 1000, px2))
+    theta = dot_product_angle([n1, n2], [m1, m2])
+    
+    A, B, C = line_from_points((ax1, ay1), (ax2, ay2))
+    h2 = distance_to_perpendicular(A, B, C, bx2, by2)
+    h1 = distance_to_perpendicular(A, B, C, bx1, by1)
+    alpha = np.pi / 2 - theta
+    if ay1 < px2:
+        alpha = np.pi / 2 + theta
+    dy = h1 * np.sin(alpha)
+    dx = h1 * np.cos(alpha)
+    # coords obb obx1, oby1, ...
+    obx1 = ax1 + dx
+    oby1 = ay1 - dy
+    obx4 = ax2 + dx
+    oby4 = ay2 - dy
+    dy = h2 * np.sin(alpha)
+    dx = h2 * np.cos(alpha)
+    obx2 = ax1 - dx
+    oby2 = ay1 + dy
+    obx3 = ax2 - dx
+    oby3 = ay2 + dy
+    op1, op2, op3, op4 = correct_sequence((obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4))
+    return *op1, *op2, *op3, *op4
