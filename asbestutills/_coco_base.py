@@ -110,3 +110,7 @@ def _image_with_bbox(img, bboxes, color =0, thikness = 10):
         x1,y1 = bbox[:2] + bbox[2:]
         img = cv2.rectangle(img,(x0,y0),(x1,y1), color, thikness)
     return img
+
+def _image_with_contours(img, polygones, color = 0, thickness = 4):
+    for poly in polygones:
+        pass

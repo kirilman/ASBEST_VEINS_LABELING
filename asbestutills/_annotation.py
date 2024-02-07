@@ -282,7 +282,7 @@ class Annotation():
         return image
 
     #-------------------------------------    
-
+  
     def get_annotations(self, image_id = 1, cat_ids = None):
         '''
         Get annotations for image by id.
