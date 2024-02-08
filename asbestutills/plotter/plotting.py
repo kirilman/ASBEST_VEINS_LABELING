@@ -32,7 +32,7 @@ def plot_images(path2label, path2images, path2save, thickness=8, color=125):
         labels = read_segmentation_labels(f_labels[name])
         img = cv2.imread(str(f_images[name]))
         img = draw_obounding_box(img, labels, thickness, color)
-        cv2.imwrite(str(path2save / "{}.jpeg".format(name)), img)
+        cv2.imwrite(str(path2save / "{}.jpg".format(name)), img)
 
 
 def max_size(x1, y1, x2, y2, x3, y3, x4, y4):
@@ -77,7 +77,7 @@ def plot_with_yolo(
             xc = int(x1 + (x2 - x1) / 2)
             yc = int(y1 + (y2 - y1) / 2)
             image = cv2.putText(image, f"{int(d)}", (xc, yc), 2, 1, (0, 128, 255), 3)
-        cv2.imwrite(str(path2save / "{}.jpeg".format(name)), image)
+        cv2.imwrite(str(path2save / "{}.jpg".format(name)), image)
 
 
 # from ultralytics import YOLO

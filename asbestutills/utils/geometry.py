@@ -239,9 +239,9 @@ def coords_other_line_by_coords(x, y):
 
 def segment2obb(x_coords, y_coords):
     """
-        Get oriented box coordinates from segmentation mask coordinates (x_coords, y_coords)
-        Returns:
-        x0, y0, x1, y1, x2, y2, x3, y3 
+    Get oriented box coordinates from segmentation mask coordinates (x_coords, y_coords)
+    Returns:
+    x0, y0, x1, y1, x2, y2, x3, y3
     """
     ax1, ay1, ax2, ay2 = coords_max_line(x_coords, y_coords)
     if ax2 > ax1 and ay2 > ay1:
@@ -263,12 +263,12 @@ def segment2obb(x_coords, y_coords):
             if abs(d) > max_dist_left:
                 max_dist_left = d
                 bx1, by1 = point
-    
+
     px1, px2 = point_intersection(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2)
     n1, n2 = vec_from_points((px1, px2), (ax1, ay1))
     m1, m2 = vec_from_points((px1, px2), (px1 + 1000, px2))
     theta = dot_product_angle([n1, n2], [m1, m2])
-    
+
     A, B, C = line_from_points((ax1, ay1), (ax2, ay2))
     h2 = distance_to_perpendicular(A, B, C, bx2, by2)
     h1 = distance_to_perpendicular(A, B, C, bx1, by1)
@@ -288,5 +288,7 @@ def segment2obb(x_coords, y_coords):
     oby2 = ay1 + dy
     obx3 = ax2 - dx
     oby3 = ay2 + dy
-    op1, op2, op3, op4 = correct_sequence((obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4))
+    op1, op2, op3, op4 = correct_sequence(
+        (obx1, oby1), (obx2, oby2), (obx3, oby3), (obx4, oby4)
+    )
     return *op1, *op2, *op3, *op4

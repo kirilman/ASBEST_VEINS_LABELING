@@ -5,6 +5,7 @@ from PIL import Image
 import pandas as pd
 from pprint import pprint
 from pathlib import Path
+import cv2
 
 from ._annotation_base import (_set_cat_names,
                                _cat_ids,
@@ -28,9 +29,10 @@ from ._image_base import (_resize_imgs,
 from ._coco_base import (_ann2mask,
                          _masks2image,
                          _masks2d,
-                         _image_with_bbox)
+                         _image_with_bbox,
+                         _image_with_contours)
 
-from .utils.geometry import segment2obb
+from .utils.geometry import segment2obb, coords_max_line, distance
 
 
 class Annotation():
@@ -390,6 +392,25 @@ class Annotation():
           print(e)
       return anns
     
+    def get_max_lines(self, image_id, cat_ids = None):
+        '''
+        Get coordinate of max line in polygones for image
+
+        Returns
+        ----------
+        list[list]: coordinate max line 
+          for image in format [x0, y0, x1, y1].
+        '''
+        anno = self.get_annotations(image_id = image_id, cat_ids = cat_ids)
+        anns = []
+        for p in anno:
+            coords = p['segmentation'][0]
+            x_coords = coords[::2]
+            y_coords = coords[1::2]
+            x0, y0, x1, y1 = coords_max_line(x_coords, y_coords)
+            anns.append([x0, y0, x1, y1])
+        return anns
+    
     #----------------------------------------------- 
     def get_masks(self,image_id, cat_ids = None, mode = 'instances'):
         '''
@@ -455,6 +476,77 @@ class Annotation():
         else:
           return img
     #----------------------------------------------
+    def get_image_with_bbox(self, image_id = 1, cat_ids = None, color =0, thikness = 10):
+        '''
+        Get image with drawn bounding boxes.
+        
+        Parameters
+        ----------
+        image_id: int,
+          images to select, start from 1.
+        cat_ids: list[int],
+          categories to output, all possible if None.
+        color: int; [int,int,int],
+          color for box bounds, int format for brightness,
+          [int,int,int] format for color.
+        thikness: int,
+          thikness for box bounds.
+        
+        Returns
+        ----------
+        ndarray: image array with drawn bounding boxes.        
+        '''
+        img = self.get_image(image_id)
+        bboxes = self.get_bboxes(image_id, cat_ids)
+        if bboxes:
+          return _image_with_bbox(img, bboxes, color, thikness)
+        else:
+          return img
+    #----------------------------------------------
+        
+    def get_image_with_contours(self, image_id = 1, cat_ids = None, color =0, thikness = 10, draw_main_line = False):
+        '''
+        Get image with drawn contours
+        
+        Parameters
+        ----------
+        image_id: int,
+          images to select, start from 1.
+        cat_ids: list[int],
+          categories to output, all possible if None.
+        color: int; [int,int,int],
+          color for box bounds, int format for brightness,
+          [int,int,int] format for color.
+        thikness: int,
+          thikness for box bounds.
+        
+        Returns
+        ----------
+        ndarray: image array with drawn bounding boxes.        
+        '''
+        img = self.get_image(image_id)
+        segments = self.get_segmentations(image_id, cat_ids)
+        if segments:
+          polygons = []
+          main_lines = []
+          for p in segments:
+              x_coords = p[::2]
+              y_coords = p[1::2]
+              polygone =  np.vstack((x_coords, y_coords)).T.astype(np.int64)
+              polygons.append(polygone)
+
+              x1, y1, x2, y2 = coords_max_line(x_coords, y_coords)
+              ro = distance((x1,y1),(x2,y2))
+              main_lines.append({'p1':(int(x1), int(y1)), 'p2':(int(x2), int(y2)), 'ro': ro})
+          img = _image_with_contours(img, polygons, color, thikness)
+          if draw_main_line:
+              for line in main_lines:
+                  
+                  img = cv2.line(img, line['p1'], line['p2'], color = color, thickness = thikness)
+                  cv2.putText(img, f"{int(line['ro'])}", (int(line['p1'][0] + 15), int(line['p1'][1]+ 15)), 2, 1, (255,69,0), 3)
+        return img
+    #----------------------------------------------
+        
     def __check_image_id(self, image_id):
         if image_id<1 or image_id > len(self.data['images']):
             raise ValueError(f'image_id {image_id} image_id<1 or image_id > len(data[images])')
