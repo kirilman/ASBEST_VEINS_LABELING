@@ -32,7 +32,7 @@ from ._coco_base import (_ann2mask,
                          _image_with_bbox,
                          _image_with_contours)
 
-from .utils.geometry import segment2obb, coords_max_line, distance
+from .utils.geometry import segment2obb, coords_max_line, distance, coords_other_line_by_coords
 
 
 class Annotation():
@@ -541,10 +541,64 @@ class Annotation():
           img = _image_with_contours(img, polygons, color, thikness)
           if draw_main_line:
               for line in main_lines:
-                  
                   img = cv2.line(img, line['p1'], line['p2'], color = color, thickness = thikness)
                   cv2.putText(img, f"{int(line['ro'])}", (int(line['p1'][0] + 15), int(line['p1'][1]+ 15)), 2, 1, (255,69,0), 3)
         return img
+    
+    def get_image_with_points(self, image_id = 1, cat_ids = None, color =0, thikness = 10, radius = 20, color_point = 225):
+        '''
+        Get image with drawn keypoints
+        
+        Parameters
+        ----------
+        image_id: int,
+          images to select, start from 1.
+        cat_ids: list[int],
+          categories to output, all possible if None.
+        color: int; [int,int,int],
+          color for box bounds, int format for brightness,
+          [int,int,int] format for color.
+        thikness: int,
+          thikness for box bounds.
+        
+        Returns
+        ----------
+        ndarray: image array with drawn bounding boxes.        
+        '''
+        img = self.get_image(image_id)
+        segments = self.get_segmentations(image_id, cat_ids)
+        if segments:
+          polygons = []
+          main_lines = []
+          other_lines = []
+          for p in segments:
+              x_coords = p[::2]
+              y_coords = p[1::2]
+              polygone =  np.vstack((x_coords, y_coords)).T.astype(np.int64)
+              polygons.append(polygone)
+
+              x1, y1, x2, y2 = coords_max_line(x_coords, y_coords)
+              ro = distance((x1,y1),(x2,y2))
+              main_lines.append({'p1':(int(x1), int(y1)), 'p2':(int(x2), int(y2)), 'ro': ro})
+
+              x1, y1, x2, y2 = coords_other_line_by_coords(x_coords, y_coords)
+              other_lines.append({'p1':(int(x1), int(y1)), 'p2':(int(x2), int(y2))})
+          img = _image_with_contours(img, polygons, color, thikness)
+         
+          for line in main_lines:
+              img = cv2.line(img, line['p1'], line['p2'], color = color, thickness = thikness)
+              cv2.putText(img, f"{int(line['ro'])}", (int(line['p1'][0] + 15), int(line['p1'][1]+ 15)), 2, 1, (255,69,0), 3)
+
+          for t in main_lines:
+              p1, p2, _ = t.values()
+              img = cv2.circle(img, p1, radius, color = color_point, thickness = 2*thikness)
+              img = cv2.circle(img, p2, radius, color = color_point, thickness = 2*thikness)
+          for t in other_lines:
+              p1, p2 = t.values()
+              img = cv2.circle(img, p1, radius, color = color_point, thickness = 2*thikness)
+              img = cv2.circle(img, p2, radius, color = color_point, thickness = 2*thikness)
+        return img
+
     #----------------------------------------------
         
     def __check_image_id(self, image_id):
