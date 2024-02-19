@@ -4,6 +4,34 @@ from asbestutills._reader import read_segmentation_labels
 from asbestutills._path import list_ext, list_images
 from pathlib import Path
 import numpy as np
+from asbestutills._path import list_images
+
+
+def model_keypoint(image, model, **kwargs):
+    results = model(image, iou=0.4)
+    kpnt = results[0].keypoints.xy.detach().cpu().numpy().astype(int)
+    image = _image_with_keypoint(image, kpnt, **kwargs)
+    return image
+
+
+def _image_with_keypoint(image, keypoint, thickness=8, color=(0, 160, 0)):
+    """
+    Draw keypoint on image
+    results[0].keypoints.xy.detach().cpu().numpy().astype(int):
+
+    """
+    for coords in keypoint:
+        coords = coords.reshape(-1)
+        p1 = coords[:2]
+        p2 = coords[2:4]
+        p3 = coords[4:6]
+        p4 = coords[6:8]
+        image = cv2.circle(image, p1, 12, color, 2 * thickness)
+        image = cv2.circle(image, p2, 12, color, 2 * thickness)
+        image = cv2.line(image, p1, p2, color, thickness)
+        image = cv2.circle(image, p3, 12, color, 2 * thickness)
+        image = cv2.circle(image, p4, 12, color, 2 * thickness)
+    return image
 
 
 def draw_obounding_box(img, norm_box, thickness=8, color=125):
@@ -39,6 +67,25 @@ def max_size(x1, y1, x2, y2, x3, y3, x4, y4):
     dx = np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
     dy = np.sqrt((x2 - x3) ** 2 + (y2 - y3) ** 2)
     return max(dx, dy)
+
+
+class Plotter:
+    def __init__(self, path2image, f_plot):
+        self.files = [Path(path2image) / x for x in list_images(path2image)]
+        self.f_plot = f_plot
+
+    def __iter__(self):
+        self.a = 1
+        return self
+
+    def __next__(self, **kw):
+        if len(self.files) > 0:
+            fp = self.files.pop()
+            image = cv2.imread(str(fp))
+            image = self.f_plot(image, kw)
+            return image
+        else:
+            raise StopIteration
 
 
 def plot_with_yolo(
