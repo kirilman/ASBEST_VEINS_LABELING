@@ -1,5 +1,5 @@
 import math
-from geometry import distance
+from .geometry import distance
 
 P = [-3, -3]
 
@@ -80,10 +80,11 @@ def find_min_y(points):
     return P, mini
 
 
-def graham_scan(points):
+def graham_scan(xx, yy):
 
     # sort the points (except p0) according to the polar angle
     # made by the line segment with x-axis in anti-clockwise direction
+    points = [(x, y) for x, y in zip(xx, yy)]
     points.sort(key=cmp_to_key(polar_comparator))
 
     # let p0 be the point with minimum y-coordinate, or the leftmost such point in case of a tie
@@ -141,4 +142,7 @@ def graham_scan(points):
                     break
             stack.append(points[i])
             stack_size += 1
-    return stack
+
+    x = [x[0] for x in stack]
+    y = [x[0] for x in stack]
+    return x, y
