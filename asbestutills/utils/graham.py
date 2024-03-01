@@ -144,5 +144,5 @@ def graham_scan(xx, yy):
             stack_size += 1
 
     x = [x[0] for x in stack]
-    y = [x[0] for x in stack]
+    y = [x[1] for x in stack]
     return x, y
