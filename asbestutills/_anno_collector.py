@@ -107,7 +107,7 @@ def anno2df(
     if cat_ids == None:
         cat_ids = coco_anno_dict["class_id"]
 
-    labeld_image_ids = _check_anno_labels(coco_anno_dict, coco, cat_ids=cat_ids) #
+    labeld_image_ids = _check_anno_labels(coco_anno_dict, coco, cat_ids=cat_ids)  #
     # labeld_image_ids = check_anno_labels(anno_path, cat_ids = None)
 
     imglist = coco.loadImgs(ids=labeld_image_ids)
@@ -169,18 +169,14 @@ def collec_newanno(path, dir_names, image_dir_path=None, cat_ids=None):
 
     Paramters
     ---------------------
-    anno_path: string,
-      path annotation file.
+    path: string,
+      path dir file.
+    dir_names: list[string],
+      dirs with anno json files.
     image_dir_path: string,
-      path image directory.
-      if none anno file and images are in the same directory.
+      path to image dir.
     cat_ids: list[int],
-      classes to outout, , all possible if None.
-    start_image_id: int,
-      first id number of the new image description
-    start_anno_id: int,
-      first id number of the new annotation description
-
+      classes to out, all possible if None.
     Returns
     ----------
     pd.DataFrame{},
@@ -443,6 +439,21 @@ def copy2train(anno_path, new_img_dir="train", project_path=None, copy_anno=True
 
 
 def merge_anno(path2anno, dir_names, image_dir_path, path2save):
+    """
+    Merge into 1 dataframe of annotations all exiting annos.
+
+    Paramters
+    ---------------------
+    path: string,
+      path dir file.
+    dir_names: list[string],
+      dirs with anno json files.
+    image_dir_path: string,
+      path to image dir.
+    path2save: string,
+      path to json out file
+    Returns
+    """
     df = collec_newanno(path2anno, dir_names, image_dir_path)
     df_new = pd.DataFrame()
     first_row = df.iloc[0].to_dict()
@@ -514,11 +525,3 @@ def merge_anno(path2anno, dir_names, image_dir_path, path2save):
             df_new = pd.concat([df_new, pd.DataFrame([dict_desc])], ignore_index=True)
 
     new_anno_path = create_json(df_new, new_anno_name=path2save)
-
-
-if __name__ == "__main__":
-    # _merge_anno("/storage/reshetnikov/open_pits_merge/annotations/",
-    #             ['anno', 'add_sam'],
-    #             "",
-    #             "/storage/reshetnikov/open_pits_merge/annotations/anno_merge2.json")
-    pass
