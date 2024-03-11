@@ -614,13 +614,13 @@ if __name__ == "__main__":
         "--type",
         type=str,
         default="keypoint",
-        help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files \n",
+        help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files; 'obb' - obb; 'yolo2coco'; 'coco2yolo'; 'keypoint' \n",
     )
     args = parser.parse_args()
     print(args, args.type)
     if args.type == "coco2obb":
         coco2obb(args.inpt_dir, args.save_dir)
-    elif args.type == "obb_maxline":
+    elif args.type == "obb":
         coco2obb_maxline(args.inpt_dir, args.save_dir)
 
     elif args.type == "yolo2coco":
