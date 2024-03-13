@@ -89,7 +89,7 @@ def _masks2d(masks):
 
 
 # -----------------------------------
-def _image_with_bbox(img, bboxes, color=0, thikness=10):
+def _image_with_bbox(img, bboxes, color=0, thickness=10):
     """
     Get image with drawn bounding boxes.
 
@@ -112,7 +112,7 @@ def _image_with_bbox(img, bboxes, color=0, thikness=10):
     for bbox in np.atleast_2d(bboxes).astype(int):
         x0, y0 = bbox[:2]
         x1, y1 = bbox[:2] + bbox[2:]
-        img = cv2.rectangle(img, (x0, y0), (x1, y1), color, thikness)
+        img = cv2.rectangle(img, (x0, y0), (x1, y1), color, thickness)
     return img
 
 
@@ -129,3 +129,30 @@ def _image_with_contours(
             assert "Shape of polygones (n,2)"
     image = cv2.polylines(image, polygones, True, color, thickness)
     return image
+
+def _image_with_obbox(img, obboxes, color=0, thickness = 1):
+    """
+    Get image with drawn oriented bounding boxes.
+
+    Parameters
+    ----------
+    img: ndarray,
+      image in form height x width x channels.
+    obboxes: list[list[int]],
+      orientide bounding boxes in format [[x0,y0,x1,y1,x2,y2,x3,y3]].
+    color: int; [int,int,int],
+      color for box bounds, int format for brightness,
+      [int,int,int] format for color.
+    thikness: int,
+      thikness for box bounds.
+    Returns
+    ----------
+    ndarray: image array with drawn bounding boxes.
+    """
+    for box in obboxes:
+        c = np.round(box).astype(np.int32)
+        img = cv2.line(img, (c[0],c[1]),(c[2],c[3]), color=color, thickness = thickness)
+        img = cv2.line(img, (c[2],c[3]),(c[4],c[5]), color=color, thickness = thickness)
+        img = cv2.line(img, (c[4],c[5]),(c[6],c[7]), color=color, thickness = thickness)
+        img = cv2.line(img, (c[6],c[7]),(c[0],c[1]), color=color, thickness = thickness)
+    return img

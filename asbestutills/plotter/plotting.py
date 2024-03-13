@@ -104,7 +104,7 @@ def plot_with_yolo(
     path2save = Path(path2save)
     for name, fpath in f_images.items():
         image = cv2.imread(str(fpath))
-        results = model(image, iou=0.4)
+        results = model(image, iou=0.4, **kwarg)
         if len(results) == 0:
             continue
 
@@ -131,7 +131,7 @@ def plot_with_yolo(
             xc = int(x1 + (x2 - x1) / 2)
             yc = int(y1 + (y2 - y1) / 2)
             image = cv2.putText(image, f"{int(d)}", (xc, yc), 2, 1, (0, 128, 255), 3)
-        cv2.imwrite(str(path2save / "{}.jpg".format(name)), image)
+        cv2.imwrite(str(path2save / fpath.name), image)
 
 
 def yolo2xyxy(xc, yc, w, h):

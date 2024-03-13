@@ -30,7 +30,8 @@ from ._coco_base import (_ann2mask,
                          _masks2image,
                          _masks2d,
                          _image_with_bbox,
-                         _image_with_contours)
+                         _image_with_contours,
+                         _image_with_obbox)
 
 from .utils.geometry import segment2obb, coords_max_line, distance, coords_other_line_by_coords
 
@@ -476,7 +477,8 @@ class Annotation():
         else:
           return img
     #----------------------------------------------
-    def get_image_with_bbox(self, image_id = 1, cat_ids = None, color =0, thikness = 10):
+        #---------------------------------------------- 
+    def get_image_with_obbox(self, image_id = 1, cat_ids = None, color = 0, thikness = 10):
         '''
         Get image with drawn bounding boxes.
         
@@ -494,15 +496,14 @@ class Annotation():
         
         Returns
         ----------
-        ndarray: image array with drawn bounding boxes.        
+        ndarray: image array with drawn orinted bounding boxes.        
         '''
         img = self.get_image(image_id)
-        bboxes = self.get_bboxes(image_id, cat_ids)
-        if bboxes:
-          return _image_with_bbox(img, bboxes, color, thikness)
+        obboxes = self.get_obboxes(image_id, cat_ids)
+        if obboxes:
+          return _image_with_obbox(img, obboxes, color, thikness)
         else:
           return img
-    #----------------------------------------------
         
     def get_image_with_contours(self, image_id = 1, cat_ids = None, color =0, thikness = 10, draw_main_line = False):
         '''
