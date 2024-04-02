@@ -478,7 +478,7 @@ class Annotation():
           return img
     #----------------------------------------------
         #---------------------------------------------- 
-    def get_image_with_obbox(self, image_id = 1, cat_ids = None, color = 0, thikness = 10):
+    def get_image_with_obbox(self, image_id = 1, cat_ids = None, color = 0, thikness = 10, dotted = False, gap = 10):
         '''
         Get image with drawn bounding boxes.
         
@@ -501,7 +501,7 @@ class Annotation():
         img = self.get_image(image_id)
         obboxes = self.get_obboxes(image_id, cat_ids)
         if obboxes:
-          return _image_with_obbox(img, obboxes, color, thikness)
+          return _image_with_obbox(img, obboxes, color, thikness, dotted, gap)
         else:
           return img
         

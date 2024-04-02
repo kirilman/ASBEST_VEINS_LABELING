@@ -4,7 +4,7 @@ import json
 import cv2
 from pycocotools import mask as cocoutils
 from typing import List
-
+from .plotter.plotting import drawpoly, drawline
 
 # -----------------------------------
 def _ann2mask(ann, h, w):
@@ -130,7 +130,7 @@ def _image_with_contours(
     image = cv2.polylines(image, polygones, True, color, thickness)
     return image
 
-def _image_with_obbox(img, obboxes, color=0, thickness = 1):
+def _image_with_obbox(img, obboxes, color=0, thickness = 1, dotted = False, gap = 10):
     """
     Get image with drawn oriented bounding boxes.
 
@@ -149,10 +149,24 @@ def _image_with_obbox(img, obboxes, color=0, thickness = 1):
     ----------
     ndarray: image array with drawn bounding boxes.
     """
-    for box in obboxes:
-        c = np.round(box).astype(np.int32)
-        img = cv2.line(img, (c[0],c[1]),(c[2],c[3]), color=color, thickness = thickness)
-        img = cv2.line(img, (c[2],c[3]),(c[4],c[5]), color=color, thickness = thickness)
-        img = cv2.line(img, (c[4],c[5]),(c[6],c[7]), color=color, thickness = thickness)
-        img = cv2.line(img, (c[6],c[7]),(c[0],c[1]), color=color, thickness = thickness)
+    if dotted:
+        for box in obboxes:
+            try:
+                box = np.round(box).astype(np.int32)
+                drawline(img, (box[0], box[1]), (box[2], box[3]), color, thickness, gap)
+                drawline(img, (box[2], box[3]), (box[4], box[5]), color, thickness, gap)
+                drawline(img, (box[4], box[5]), (box[6], box[7]), color, thickness, gap)
+                drawline(img, (box[6], box[7]), (box[0], box[1]), color, thickness, gap)
+            except Exception as e:
+                pass
+    else:
+        for box in obboxes:
+            try:
+                c = np.round(box).astype(np.int32)
+                img = cv2.line(img, (c[0],c[1]),(c[2],c[3]), color=color, thickness = thickness)
+                img = cv2.line(img, (c[2],c[3]),(c[4],c[5]), color=color, thickness = thickness)
+                img = cv2.line(img, (c[4],c[5]),(c[6],c[7]), color=color, thickness = thickness)
+                img = cv2.line(img, (c[6],c[7]),(c[0],c[1]), color=color, thickness = thickness)
+            except Exception as e:
+                pass
     return img

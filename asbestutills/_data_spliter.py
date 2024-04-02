@@ -4,10 +4,13 @@ import numpy as np
 from pathlib import Path
 from ._coords_transition import yolo2xyxy, xywh2xyxy
 from ._path import list_ext, list_images, _cp_file_list
+# from _path import list_ext, list_images, _cp_file_list
 import shutil
 import cv2
 from ultralytics import YOLO
 from tqdm import tqdm
+import pandas as pd
+
 
 RANDOM_STATE = 101
 
@@ -37,6 +40,46 @@ class ImageWithBoxs:
             slices[i] = {"image": self.image[y1:y2, x1:x2, :], "box": [x1, y1, x2, y2]}
         return slices
 
+def split_with_file(path2image: str,
+                    path2label: str,
+                    path2filesplit: str,
+                    path2save: str):
+    path2image = Path(path2image)
+    path2label = Path(path2label)
+    frame = pd.read_csv(path2filesplit)
+    train_names = [f.split('.')[0] for f in frame[frame.train == 1].name.to_list()]
+    val_names = [f.split('.')[0] for f in frame[frame.val == 1].name.to_list()]
+    test_names = [f.split('.')[0] for f in frame[frame.test == 1].name.to_list()]
+    f_images = [f for f in list_images(path2image)] 
+    f_labels = [f for f in list_ext(path2label)]
+    print(f_images)
+    # print(f_labels)
+    print(train_names)
+
+    path2save = Path(path2save)
+    if path2save.exists():
+        shutil.rmtree(path2save)
+    path2save.mkdir()
+    print([path2image / f for f in f_images if Path(f) in train_names])
+    _cp_file_list(path2save,"train/", [path2image / f for f in f_images if Path(f).stem in train_names])
+    _cp_file_list(path2save,"train/", [path2label / f for f in f_labels if Path(f).stem in train_names])
+
+    _cp_file_list(path2save,"val/", [path2image / f for f in f_images if Path(f).stem in val_names])
+    _cp_file_list(path2save,"val/", [path2label / f for f in f_labels if Path(f).stem in val_names])
+
+    _cp_file_list(path2save,"test/", [path2image / f for f in f_images if Path(f).stem in test_names])
+    _cp_file_list(path2save,"test/", [path2label / f for f in f_labels if Path(f).stem in test_names])
+    yaml_config = {
+            "names": ["stone"],
+            "nc": 1,
+            "path": str(path2save),
+            "train": "./train",
+            "val": "./val",
+            "test": "./test"
+        }
+
+    with open(path2save / "config.yaml", "w") as file:
+        yaml.dump(yaml_config, file)
 
 def k_fold_split_yolo(
     path2label: str,
@@ -102,7 +145,7 @@ def k_fold_split_yolo(
         with open(path_2_fold / "config.yaml", "w") as file:
             yaml.dump(yaml_config, file)
         print(kf, len(train_indxs), len(test_indxs), path_2_fold)
-    return
+    
 
 
 def is_valid_slice(image, model, conf=0.6):
@@ -309,33 +352,14 @@ def filter_bboxs_by_network(
 
 
 if __name__ == "__main__":
-    # k_fold_split_yolo("/storage/reshetnikov/openpits/update_anno_sam/correct/","/storage/reshetnikov/openpits/images_resize/",
-    #                   "/storage/reshetnikov/openpits/update_anno_sam/fold_update/",4)
-
-    # k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/obb","/storage/reshetnikov/open_pits_merge/images/",
-    #   "/storage/reshetnikov/open_pits_merge/obb_fold/",4)
-    # k_fold_split_yolo("/storage/reshetnikov/open_pits_merge/test_max_line/","/storage/reshetnikov/open_pits_merge/images/",
-    #                   "/storage/reshetnikov/open_pits_merge/obb_mline_fold/",4)
-    k_fold_split_yolo(
-        "/storage/reshetnikov/open_pits_merge/obb_yolo8/anno/",
-        "/storage/reshetnikov/open_pits_merge/image_jpg/",
-        "/storage/reshetnikov/open_pits_merge/obb_yolo8/Fold/",
-        4,
-    )
-    # merge_yolo_annotation('/storage/reshetnikov/open_pits_merge/yolo_format/',
-    #                       '/storage/reshetnikov/openpits/images/',
-    #                       '/storage/reshetnikov/runs/runs/v8/detect/v8x_open_pits_best/labels',
-    #                       '/storage/reshetnikov/open_pits_merge/add_anno_net/', 0.5, False)
-
-    # merge_yolo_anno('/storage/reshetnikov/part10/sam_yolo/',
-    #                 '/storage/reshetnikov/part10/',
-    #                 '/storage/reshetnikov/part10/other/',
-    #                 '/storage/reshetnikov/part10/merge_labels/',
-    #                 '/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt',
-    #                 0.4)
-
-    # filter_bboxs_by_network('/storage/reshetnikov/part10/sam_yolo/',
-    #                 '/storage/reshetnikov/part10/',
-    #                 '/storage/reshetnikov/part10/merge_labels/',
-    #                 '/storage/reshetnikov/runs/yolov8/yolov8x_fold_0/weights/best.pt',
-    #                 0.55)
+    split_with_file("/storage/reshetnikov/open_pits_merge/merge_fraction/split/images",
+                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/yolo/",
+                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/files_split.csv",
+                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split_box/")
+    
+    # k_fold_split_yolo(
+    #     "/storage/reshetnikov/open_pits_merge/obb_yolo8/anno/",
+    #     "/storage/reshetnikov/open_pits_merge/image_jpg/",
+    #     "/storage/reshetnikov/open_pits_merge/obb_yolo8/Fold/",
+    #     4,
+    # )

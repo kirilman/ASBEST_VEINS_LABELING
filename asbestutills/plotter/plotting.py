@@ -130,7 +130,7 @@ def plot_with_yolo(
             x1, y1, x2, y2 = results[0].obb[k].xyxy[0]
             xc = int(x1 + (x2 - x1) / 2)
             yc = int(y1 + (y2 - y1) / 2)
-            image = cv2.putText(image, f"{int(d)}", (xc, yc), 2, 1, (0, 128, 255), 3)
+            # image = cv2.putText(image, f"{int(d)}", (xc, yc), 2, 1, (0, 128, 255), 3)
         cv2.imwrite(str(path2save / fpath.name), image)
 
 
@@ -218,7 +218,7 @@ def drawpoly(img, pts, color, thickness):
     for p in pts:
         s = e
         e = p
-        drawline(img, s, e, color, thickness)
+        drawline(img, s, e, color, thickness,)
 
 
 def drawrect(img, pt1, pt2, color, thickness=1):

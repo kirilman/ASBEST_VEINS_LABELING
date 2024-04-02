@@ -28,10 +28,19 @@ def wasserstein(path2pred, path2label):
     df.to_csv(path2pred / "conf.csv")
 
 if __name__ == "__main__":
-    path2save = '/storage/reshetnikov/runs/fraction_obb/var_conf/obb_l'
-    path2label = '/storage/reshetnikov/open_pits_merge/merge_fraction/fraction_15/images/anno.json'
-    var_confidence('/storage/reshetnikov/runs/fraction_obb/obb_frac_8l/weights/best.pt',
-                   '/storage/reshetnikov/open_pits_merge/merge_fraction/fraction_15/fold_obb/Fold_0_out/test',
+    path2save = '/storage/reshetnikov/runs/splite/var_conf_for_splite_val/obb_8x'
+    path2label = '/storage/reshetnikov/open_pits_merge/merge_fraction/split/images/anno.json'
+    var_confidence('/storage/reshetnikov/runs/fraction_obb/obb_splite_8x/weights/best.pt',
+                   '/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split/val/',
+                   path2save,
+                   0.05, max_det = 2500)
+    wasserstein(path2save, path2label)
+
+
+    path2save = '/storage/reshetnikov/runs/splite/var_conf_for_splite_val/box_8x'
+    path2label = '/storage/reshetnikov/open_pits_merge/merge_fraction/split/images/anno.json'
+    var_confidence('/storage/reshetnikov/runs/fraction_obb/box_splite_8x/weights/best.pt',
+                   '/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split/val/',
                    path2save,
                    0.05, max_det = 2500)
     wasserstein(path2save, path2label)
