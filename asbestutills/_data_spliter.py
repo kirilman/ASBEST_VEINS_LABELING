@@ -353,9 +353,9 @@ def filter_bboxs_by_network(
 
 if __name__ == "__main__":
     split_with_file("/storage/reshetnikov/open_pits_merge/merge_fraction/split/images",
-                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/yolo/",
+                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/keypoint/",
                     "/storage/reshetnikov/open_pits_merge/merge_fraction/split/files_split.csv",
-                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split_box/")
+                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split_kpnt/")
     
     # k_fold_split_yolo(
     #     "/storage/reshetnikov/open_pits_merge/obb_yolo8/anno/",
