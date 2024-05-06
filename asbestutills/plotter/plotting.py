@@ -261,7 +261,7 @@ def draw_bbox(img, path2label, color=(0, 255, 1), lw=2):
     return annotator.img
 
 
-def draw_box_with_keypoints(path2label, path2image, rescale=True, color=(0, 255, 0)):
+def draw_box_with_keypoints(path2label, path2image, rescale=True, color=(0, 255, 0), treshold = 20, point_size = 3, line_size = 2):
     distance = lambda p1, p2: np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
     labels = read_segmentation_labels(path2label)
     image = cv2.imread(path2image)
@@ -269,7 +269,7 @@ def draw_box_with_keypoints(path2label, path2image, rescale=True, color=(0, 255,
         image = image[::2, ::2, :]
     h, w, _ = image.shape
     new_image = image
-    new_image = draw_bbox(new_image, path2label, color=color, lw=1)
+    new_image = draw_bbox(new_image, path2label, color=color, lw=line_size)
     counter = 0
     for a in labels:
         arr_label = np.array(a)
@@ -282,18 +282,18 @@ def draw_box_with_keypoints(path2label, path2image, rescale=True, color=(0, 255,
         # xyxy = xywhn2xyxy(arr_label[1:5].reshape(1,-1), w, h)[0]
         d1 = max(arr_label[3] * w, arr_label[4] * h)
         d2 = distance((c[5], c[6]), (c[7], c[8]))
-        if abs(d1 - d2) / max(d1, d2) * 100 > 20:
+        if abs(d1 - d2) / max(d1, d2) * 100 > treshold:
             color = (255, 0, 0)
             counter += 1
         else:
             color = (0, 255, 0)
-        thickness = 2
+
         new_image = cv2.circle(
-            np.array(new_image), (c[5], c[6]), 3, color=color, thickness=3
+            np.array(new_image), (c[5], c[6]), 3, color=color, thickness=point_size
         )
-        new_image = cv2.circle(new_image, (c[7], c[8]), 3, color=color, thickness=3)
+        new_image = cv2.circle(new_image, (c[7], c[8]), 3, color=color, thickness=point_size)
         new_image = cv2.line(
-            np.array(new_image), (c[5], c[6]), (c[7], c[8]), color=color, thickness=3
+            np.array(new_image), (c[5], c[6]), (c[7], c[8]), color=color, thickness=line_size
         )
 
         new_image = cv2.circle(
@@ -301,17 +301,17 @@ def draw_box_with_keypoints(path2label, path2image, rescale=True, color=(0, 255,
             (c[9], c[10]),
             3,
             color=(255, 0, 255),
-            thickness=thickness,
+            thickness=point_size,
         )
         new_image = cv2.circle(
-            new_image, (c[11], c[12]), 3, color=(255, 0, 255), thickness=thickness
+            new_image, (c[11], c[12]), 3, color=(255, 0, 255), thickness=point_size
         )
         new_image = cv2.line(
             np.array(new_image),
             (c[9], c[10]),
             (c[11], c[12]),
             color=color,
-            thickness=thickness,
+            thickness=line_size,
         )
 
     new_image = cv2.putText(

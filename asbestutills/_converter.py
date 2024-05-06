@@ -217,7 +217,7 @@ class Yolo2Coco:
         annotations = []
         categories = []
         fname_list = list_ext(self.path_label, "txt")
-        for _, fname in enumerate(fname_list):
+        for _, fname in tqdm(enumerate(fname_list)):
             with open(self.get_label_path(fname.split(".")[0]), "r") as f:
                 lines = f.readlines()
             h, w = self.get_image_hw(Path(fname).stem)
