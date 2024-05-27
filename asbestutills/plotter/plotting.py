@@ -175,6 +175,13 @@ def plot_masks(segments: List[np.ndarray], fig=None, color=[0, 0, 1], alpha=1):
 
 
 def plot_bboxs(image, bboxs, color=None, line_thickness=None, sline=cv2.LINE_AA):
+    """
+        Draw bounding box on image
+        Args:
+            image (np.array): image array
+            bboxs (np.array): xyxyn normalise array coords
+            color [List]: color image [0, 255, 0]
+    """
     res_image = image.copy()
     color = color or [255, 0, 0]
     tl = (

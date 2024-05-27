@@ -7,7 +7,10 @@ from ._path import list_ext, list_images, _cp_file_list
 # from _path import list_ext, list_images, _cp_file_list
 import shutil
 import cv2
-from ultralytics import YOLO
+try:
+    from ultralytics import YOLO
+except:
+    print("Can't yolo model")
 from tqdm import tqdm
 import pandas as pd
 

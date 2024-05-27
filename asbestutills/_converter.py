@@ -14,6 +14,7 @@ from PIL import Image
 import json
 from typing import List
 from pycocotools.coco import COCO
+from pycocotools import mask
 try:
     from .utils.geometry import (
         coords_other_line,
@@ -49,7 +50,7 @@ except:
 import argparse
 from pylabel import importer
 from collections import defaultdict
-
+import cv2
 
 def polygone_area(x, y):
     return 0.5 * np.array(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
@@ -131,6 +132,29 @@ def correct(points, W, H):
             p_new = None
     return points
 
+def mask_to_polygons(mask: np.ndarray) -> List[np.ndarray]:
+    """
+    Converts a binary mask to a list of polygons.
+
+    Parameters:
+        mask (np.ndarray): A binary mask represented as a 2D NumPy array of
+            shape `(H, W)`, where H and W are the height and width of
+            the mask, respectively.
+
+    Returns:
+        List[np.ndarray]: A list of polygons, where each polygon is represented by a
+            NumPy array of shape `(N, 2)`, containing the `x`, `y` coordinates
+            of the points. Polygons with fewer points than `MIN_POLYGON_POINT_COUNT = 3`
+            are excluded from the output.
+    """
+
+    contours, _ = cv2.findContours(
+        mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+    )
+    return [
+        np.squeeze(contour, axis=1)
+        for contour in contours
+    ]
 
 class Yolo2Coco:
     def __init__(
@@ -688,6 +712,67 @@ def convert_coco_json(json_dir="../coco/annotations/", save_dir= './', use_segme
                     line = (*(segments[i] if use_segments else bboxes[i]),)  # cls, box or segments
                     file.write(("%g " * len(line)).rstrip() % line + "\n")
 
+
+
+def convert_detecton2_to_coco(path2json, path2anno, path2save):
+    """
+        Convert detection predictions from detecton2 to COCO JSON format
+        Args:
+            path2json (str): json with detecton2 predict
+            path2anno (str): json with coco annotation file  
+            path2save (str): json save file
+    """
+    with open(path2json, 'r') as file:
+        results = json.load(file)
+
+    import threading
+    def process_data(data, k, new_list):
+        try:
+            segm = mask_to_polygons(mask.decode(data['segmentation']))
+            if len(segm[0])>21:
+                segm = [segm[0][::3,:]]
+            anno = {"id": k,
+                    "image_id": data["image_id"], 
+                    "category_id": data["category_id"], 
+                    "segmentation": [segm[0].reshape(-1).tolist()]  ,
+                    "area": polygone_area(segm[0][:,0], segm[0][:,1]),
+                    "bbox": data["bbox"],
+                    "iscrowd": 0,
+                    }
+            new_list.append(anno)
+        except:
+            pass
+    annotations = []
+    threads = []
+    for k, item in tqdm(enumerate(results)):
+        thread = threading.Thread(target=process_data, args=(item,k, annotations))
+        thread.start()
+        threads.append(thread)
+    
+    for thread in threads:
+        thread.join()
+    print(len(annotations))
+    # for k, d in tqdm(enumerate(results)):
+    #     segm = mask_to_polygons(mask.decode(d['segmentation']))
+    #     if len(segm[0])>21:
+    #         segm = [segm[0][::3,:]]
+    #     anno = {"id": k,
+    #             "image_id": d["image_id"], 
+    #             "category_id": d["category_id"], 
+    #             "segmentation": [segm[0].reshape(-1).tolist()]  ,
+    #             "area": polygone_area(segm[0][:,0], segm[0][:,1]),
+    #             "bbox": d["bbox"],
+    #             "iscrowd": 0,
+    #             }
+    #     annotations.append(anno)
+
+    with open(path2anno, 'r') as file:
+        data_dict = json.load(file)
+    data_dict['annotations'] = annotations
+
+    with open(path2save, 'w') as file:
+        json.dump(data_dict, file)
+
 def coco2box(path2json, path2images, path2save):
     dataset = importer.ImportCoco(path=path2json, path_to_images=path2images)
     dataset.export.ExportToYoloV5(path2save)
@@ -719,7 +804,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--image_dir",
         type=str,
-        help="Save directory with converted labels files.",
+        help="Save directory with converted labels files or path to anno json files,'detectron' converted ",
         default="/storage/reshetnikov/open_pits_merge/images",
     )
     parser.add_argument(
@@ -744,5 +829,8 @@ if __name__ == "__main__":
     elif args.type == "keypoint":
         coco2box_keypoints(args.inpt_dir, args.save_dir, True)
     elif args.type == "segment":
-        print('start')
         convert_coco_json(args.inpt_dir, args.save_dir, True)
+    elif args.type == "detectron":
+        convert_detecton2_to_coco(args.inpt_dir, args.image_dir, args.save_dir)
+    else:
+        print(f'{args.type} not found')
