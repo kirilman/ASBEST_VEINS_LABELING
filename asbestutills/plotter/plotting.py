@@ -49,7 +49,6 @@ def plot_obounding_box(img, norm_box, thickness=8, color=125):
     """
     h, w, c = img.shape
     for box in norm_box:
-        box = np.array(box[1:])
         box[0::2] *= w
         box[1::2] *= h
         box = box.astype(np.int32)
@@ -71,7 +70,7 @@ def plot_images(path2label, path2images, path2save, thickness=8, color=125):
     for name, f_path in f_labels.items():
         labels = read_segmentation_labels(f_labels[name])
         img = cv2.imread(str(f_images[name]))
-        img = draw_obounding_box(img, labels, thickness, color)
+        img = plot_obounding_box(img, labels, thickness, color)
         cv2.imwrite(str(path2save / "{}.jpg".format(name)), img)
 
 
