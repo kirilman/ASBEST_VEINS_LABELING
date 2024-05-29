@@ -179,7 +179,7 @@ def plot_masks(segments: List[np.ndarray], fig=None, color=[0, 0, 1], alpha=1):
     return fig
 
 
-def plot_bboxs(image, bboxs, color=None, line_thickness=None, sline=cv2.LINE_AA):
+def plot_bboxs(image, bboxs, color=None, thickness=None, sline=cv2.LINE_AA):
     """
         Draw bounding box on image
         Args:
@@ -190,7 +190,7 @@ def plot_bboxs(image, bboxs, color=None, line_thickness=None, sline=cv2.LINE_AA)
     res_image = image.copy()
     color = color or [255, 0, 0]
     tl = (
-        line_thickness
+        thickness
         or round(0.002 * (res_image.shape[0] + res_image.shape[1]) / 2) + 1
     )
     scale_h, scale_w = res_image.shape[:2]
