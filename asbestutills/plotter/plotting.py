@@ -41,7 +41,12 @@ def _image_with_keypoint(image, keypoint, thickness=8, color=(0, 160, 0)):
     return image
 
 
-def draw_obounding_box(img, norm_box, thickness=8, color=125):
+def plot_obounding_box(img, norm_box, thickness=8, color=125):
+    """
+        draw oriented bounding box on image
+        Args:
+            norm_box np.array [n,8]: array of xyxyxyxyn сoords
+    """
     h, w, c = img.shape
     for box in norm_box:
         box = np.array(box[1:])
