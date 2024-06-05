@@ -658,13 +658,15 @@ def convert_coco_json(json_dir="../coco/annotations/", save_dir= './', use_segme
     # coco80 = coco91_to_coco80_class()
 
     # Import json
-    for json_file in sorted(Path(json_dir).resolve().glob("*.json")):
+    if Path(json_dir).suffix == ".json":
+        json_dir = Path(json_dir).parent
+    for json_file in sorted(json_dir.resolve().glob("*.json")):
         fn = Path(save_dir)  # folder name
-        print(fn)
         fn.mkdir(exist_ok=True)
+        print(f'Save path is {fn}')
         with open(json_file) as f:
             data = json.load(f)
-
+        
         # Create image dict
         images = {"%g" % x["id"]: x for x in data["images"]}
         # Create image-annotations dict

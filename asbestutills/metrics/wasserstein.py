@@ -1,19 +1,27 @@
 import numpy as np
-from ultralytics import YOLO
+from ultralytics import YOLO, YOLOv10
 from scipy.stats import wasserstein_distance
 from pathlib import Path
 from parzen.statistic import collect_maxsize_obbox_for_prediction, collect_segmentation_maxsize, collect_bbox_maxsize
 import pandas as pd
 from asbestutills._converter import Yolo2Coco
+import torch 
+import ultralytics
+
 
 def var_confidence(path2model, path2source, path2save, conf_step, max_det):
-    model = YOLO(model=path2model)
+    state = torch.load(path2model)
+    if isinstance(state['model'], ultralytics.nn.tasks.YOLOv10DetectionModel):
+        model = YOLOv10(model=path2model)
+    else:
+        model = YOLO(model=path2model)
+    model.to( device='cuda:2')
     for conf in np.arange(0.05, 0.85, conf_step):
         c = np.round(conf,2)
         name = "conf_{}".format(c)
         model.predict(source = path2source, save = False, imgsz = 640, conf = c, project = path2save, name = name, save_txt = True, max_det = max_det)
         if model.task == 'segment':
-            conv = Yolo2Coco(Path(path2save) / f"conf_{c}/labels/", path2source, Path(path2save) / f"conf_{c}/labels/predict.json")
+            conv = Yolo2Coco(Path(path2save) / f"conf_{c}/labels/", path2source, Path(path2save) / f"conf_{c}/labels/predict.json", )
             conv.convert()
 
 def wasserstein(path2pred, path2label):
