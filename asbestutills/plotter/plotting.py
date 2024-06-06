@@ -48,7 +48,7 @@ def plot_obounding_box(img, norm_box, thickness=8, color=125):
             norm_box np.array [n,8]: array of xyxyxyxyn сoords
     """
     h, w, c = img.shape
-    for box in norm_box:
+    for box in norm_box.copy():
         box[0::2] *= w
         box[1::2] *= h
         box = box.astype(np.int32)
@@ -193,7 +193,7 @@ def plot_bboxs(image, bboxs, color=None, thickness=None, sline=cv2.LINE_AA):
         or round(0.002 * (res_image.shape[0] + res_image.shape[1]) / 2) + 1
     )
     scale_h, scale_w = res_image.shape[:2]
-    for bbox in bboxs:
+    for bbox in bboxs.copy(): #если не скопировать изменить исходный массив координат
         scale_x = bbox[[0, 2]] * scale_w
         scale_y = bbox[[1, 3]] * scale_h
         c1 = (int(scale_x[0]), int(scale_y[0]))
