@@ -1,5 +1,6 @@
 import numpy as np
-from ultralytics import YOLO, YOLOv10
+from ultralytics import YOLO
+# from yolov10.ultralytics.models import YOLOv10
 from scipy.stats import wasserstein_distance
 from pathlib import Path
 from parzen.statistic import collect_maxsize_obbox_for_prediction, collect_segmentation_maxsize, collect_bbox_maxsize
@@ -7,11 +8,14 @@ import pandas as pd
 from asbestutills._converter import Yolo2Coco
 import torch 
 import ultralytics
-
+import sys
+sys.path.append("/storage/reshetnikov/yolov8_rotate/")
+sys.path.append("/storage/reshetnikov/yolov8_rotate/yolov10")
+from yolov10.ultralyticso.nn.tasks import YOLOv10DetectionModel
 
 def var_confidence(path2model, path2source, path2save, conf_step, max_det):
     state = torch.load(path2model)
-    if isinstance(state['model'], ultralytics.nn.tasks.YOLOv10DetectionModel):
+    if isinstance(state['model'], YOLOv10DetectionModel):
         model = YOLOv10(model=path2model)
     else:
         model = YOLO(model=path2model)

@@ -193,7 +193,7 @@ def plot_bboxs(image, bboxs, color=None, thickness=None, sline=cv2.LINE_AA):
         or round(0.002 * (res_image.shape[0] + res_image.shape[1]) / 2) + 1
     )
     scale_h, scale_w = res_image.shape[:2]
-    for bbox in bboxs.copy(): #если не скопировать изменить исходный массив координат
+    for bbox in bboxs.copy(): #если не скопировать изменит исходный массив координат
         scale_x = bbox[[0, 2]] * scale_w
         scale_y = bbox[[1, 3]] * scale_h
         c1 = (int(scale_x[0]), int(scale_y[0]))

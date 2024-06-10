@@ -1,4 +1,5 @@
 from torchmetrics.detection import MeanAveragePrecision
+from torchmetrics.segmentation import MeanIoU
 import torch
 import numpy as np
 from pathlib import Path
@@ -6,6 +7,7 @@ from tqdm import tqdm
 from torch import tensor
 import cv2 
 import pandas as pd
+from asbestutills._converter import yolo2coco,box2segment
 
 def read_segmentation_labels(p):
     with open(p, 'r') as f:
@@ -14,12 +16,12 @@ def read_segmentation_labels(p):
 
 def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_json = True, path2save = None):
     """
-        Compute mAP matric on files txt yolo format using torchmetrics
+        Compute mAP metric on files txt yolo format using torchmetrics
     Args:
         path2pred (str): path with txt prediction files in yolo format
         path2anno (str): path with txt targets files in yolo format
         format (str)   : format annotation in yolo format xywh or xyxy(segmentation)
-        type (str)     : "box" - box prediction
+        type (str)     : "bbox" - box prediction
                          "segm" - segmentation prediction x1y1x2y2..xnyn
         save_json (bool): save result to json
         path2save (str) : save path to json file
@@ -126,13 +128,16 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_json = 
                 ]
 
                 metric = MeanAveragePrecision(box_format=format, iou_type='segm', max_detection_thresholds = [1,100, 1500])
+                
                 metric.update(preds, target)
                 metric.update(preds, target)
                 res = metric.compute()
-                res["file"] = Path(fpath.name) 
+                res['iou'] = _cumpute_iou(preds, target) 
+                res["file"] = Path(fpath.name)
                 map.append(res)   
             except Exception as err:
                 print(err)
+
     if save_json:
         map_np = []
         if path2save == None:
@@ -144,6 +149,42 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_json = 
             pd.DataFrame(map_np).to_csv(path2save,index = False)
     return map
 
+def _cumpute_iou(pred, target):
+    """
+    Args:
+        preds: 
+        target: 
+        type (str)     : "bbox" - box prediction
+                         "segm" - segmentation prediction x1y1x2y2..xnyn
+    """
+    if 'boxes' in target[0].keys():
+        #-----------------------
+        mask = np.zeros((640,640))
+        for b in np.array(pred[0]['boxes']):
+            box = b
+            box = yolo2coco(b[0], b[1], b[2], b[3], 640, 640) #to coco
+            box = np.array(box2segment(box), np.int32)
+            res = cv2.fillPoly(mask, [box.reshape(-1,2)], color = 1)
+        #target-----------
+        targ = np.zeros((640,640))
+        for b in np.array(target[0]['boxes']):
+            box = yolo2coco(b[0], b[1], b[2], b[3], 640, 640) #to coco
+            box = np.array(box2segment(box), np.int32)
+            res = cv2.fillPoly(targ, [box.reshape(-1,2)], color = 1)
+        # mask = xywh2xyxy(preds[0]['boxes'])
+        # mask = preds[0]['boxes'].sum(axis=0)
+        # targ = target[0]['boxes'].sum(axis=0)
+    else:
+        mask = np.array(pred[0]['masks'].sum(axis=0))
+        targ = np.array(target[0]['masks'].sum(axis=0))
+    
+    targ[targ>1] = 1
+    mask[mask>1] = 1
+    mask = torch.tensor(mask, dtype=torch.long).unsqueeze(0)
+    targ = torch.tensor(targ, dtype=torch.long).unsqueeze(0)
+    print(mask.shape, targ.shape, mask.dtype, targ.dtype,mask.min(), mask.max(), targ.min(), targ.max())
+    mean_iou = MeanIoU(num_classes=1)
+    return mean_iou(mask, targ)
 
 map = compute_map("/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/validation/obb/conf_0.25/labels/",
                   "/storage/reshetnikov/open_pits_merge/merge_fraction/split/obb/", format='xyxy', type='segm', 
