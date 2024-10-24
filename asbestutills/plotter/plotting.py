@@ -160,7 +160,7 @@ def yolo2xyxy(xc, yc, w, h):
     return x1, y1, x2, y2
 
 
-def plot_masks(segments: List[np.ndarray], fig=None, color=[0, 0, 1], alpha=1):
+def plot_masks(image, segments: List[np.ndarray], color=[0, 0, 1], alpha=1):
     if fig:
         fig = fig
         ax = fig.gca()
@@ -345,9 +345,9 @@ class Annotator:
         self.lw = line_width or max(round(sum([h, w]) / 2 * 0.003), 2)  # line width
         # print(self.img.size)
 
-    def masks(self, segments: List[np.array], color=[0, 0, 0], alpha=0.9):
+    def masks(self, segments: List[np.ndarray], color=[0, 0, 0], alpha=0.9):
         """
-        List segments: np.array([[x1, y1], [x2, y2], .. ,[xn,yn]])
+        segments List[np.ndarray]: [np.array([[x1, y1], [x2, y2], .. ,[xn,yn]])
         """
         assert isinstance(segments, List), "segments not List"
         for segment in segments:

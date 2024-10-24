@@ -7,18 +7,19 @@ from parzen.statistic import collect_maxsize_obbox_for_prediction, collect_segme
 import pandas as pd
 from asbestutills._converter import Yolo2Coco
 import torch 
-import ultralytics
+# import ultralytics
 import sys
 sys.path.append("/storage/reshetnikov/yolov8_rotate/")
-sys.path.append("/storage/reshetnikov/yolov8_rotate/yolov10")
-from yolov10.ultralyticso.nn.tasks import YOLOv10DetectionModel
+# from yolov10.ultralytics.nn.tasks import YOLOv10DetectionModel
+# print(YOLOv10DetectionModel)
 
 def var_confidence(path2model, path2source, path2save, conf_step, max_det):
     state = torch.load(path2model)
-    if isinstance(state['model'], YOLOv10DetectionModel):
-        model = YOLOv10(model=path2model)
-    else:
-        model = YOLO(model=path2model)
+    # if isinstance(state['model'], YOLOv10DetectionModel):
+    #     model = YOLOv10(model=path2model)
+    # else:
+    #     model = YOLO(model=path2model)
+    model = YOLO(model=path2model)
     model.to( device='cuda:2')
     for conf in np.arange(0.05, 0.85, conf_step):
         c = np.round(conf,2)
@@ -45,7 +46,9 @@ def wasserstein(path2pred, path2label):
                 max_size = collect_bbox_maxsize(ssub, None)
             elif 'segm' in str(subdir):
                 json_files  = [x for x in subdir.rglob('*.json')]
-                print(json_files)
+                if len(json_files) > 1:
+                    json_files  = [x for x in json_files if x.name == 'coco.json']
+                    print("Количество json файлов больше 1, ", json_files)
                 max_size = collect_segmentation_maxsize(json_files[0], names)
             else:
                 max_size = collect_maxsize_obbox_for_prediction(ssub, None)
@@ -81,10 +84,13 @@ if __name__ == "__main__":
     #                0.05, max_det = 2500)
     # wasserstein(path2save, path2label)
 
-    path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/segm'
-    path2label = '/storage/reshetnikov/open_pits_merge/merge_fraction/split/images/anno.json'
-    path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/validation/segm_v9'
-    # var_confidence('/storage/reshetnikov/runs/fraction_obb/segm_splite_8x/weights/best.pt',
+    # path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/cascade_3x_segm/'
+    # path2label = '/storage/reshetnikov/open_pits_merge/merge_fraction/split/images/anno.json'
+
+    path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/rocks/cascade_3x_segm/'
+    path2label = '/storage/reshetnikov/rocks_blasting/anno.json'
+    # path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/validation/segm_v9'
+    # var_confidence('/storage/reshetnikov/runs/fraction_obb/box_10x/weights/yolov10x.pt',
     #                '/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split/test/',
     #                path2save,
     #                0.05, max_det = 2500)

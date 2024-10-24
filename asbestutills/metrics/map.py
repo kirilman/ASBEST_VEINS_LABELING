@@ -30,12 +30,16 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_json = 
     file_names_target = {Path(f).stem:f for f in list(Path(path2anno).glob("*.txt"))}
     print(file_names)
     map = []
+    assert type in ('bbox', 'segm'), f"Expected argument `type` to be one of ('bbox', 'segm') but got {type}"
     if type == 'bbox':
         for fname, fpath in tqdm(file_names.items()): 
             
             with open(fpath,"r") as f:
                 data = np.loadtxt(f)
-               
+            #если ключевые точки
+            if data.shape[1]>5:
+                print(f'{fpath} is keypoint prediction file')
+                data = data[:,:5]
             labels = torch.tensor((data[:,0]+1).astype(np.int32), dtype = torch.long) 
             scores = torch.tensor([1.0]*len(labels)) 
             boxes  = torch.tensor(data[:,1:])
@@ -64,7 +68,8 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_json = 
 
             metric.update(preds, target)
             res = metric.compute()
-            res["file"] = Path(fpath.name) 
+            res['iou'] = _cumpute_iou(preds, target) 
+            res["file"] = Path(fpath.name)
             map.append(res)   
 
     else:
@@ -182,12 +187,17 @@ def _cumpute_iou(pred, target):
     mask[mask>1] = 1
     mask = torch.tensor(mask, dtype=torch.long).unsqueeze(0)
     targ = torch.tensor(targ, dtype=torch.long).unsqueeze(0)
-    print(mask.shape, targ.shape, mask.dtype, targ.dtype,mask.min(), mask.max(), targ.min(), targ.max())
+    # print(mask.shape, targ.shape, mask.dtype, targ.dtype,mask.min(), mask.max(), targ.min(), targ.max())
     mean_iou = MeanIoU(num_classes=1)
     return mean_iou(mask, targ)
 
-map = compute_map("/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/validation/obb/conf_0.25/labels/",
-                  "/storage/reshetnikov/open_pits_merge/merge_fraction/split/obb/", format='xyxy', type='segm', 
-                   path2save='/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/validation/obb/map_025.csv')
+if __name__ == '__main__':
+    map = compute_map("/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/box_v10x/conf_0.25/labels/",
+                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/yolo/", format='xywh', type='bbox', 
+                    path2save='/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/box_v10x/map_025.csv')
 
-print(map)
+    # map = compute_map("/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/obb/conf_0.25/labels/",
+    #                 "/storage/reshetnikov/open_pits_merge/merge_fraction/split/obb/", format='xyxy', type='segm', 
+    #                 path2save='/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/obb/map_025.csv')
+
+    print(map)
