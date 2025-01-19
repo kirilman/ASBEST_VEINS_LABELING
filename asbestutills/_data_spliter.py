@@ -2,18 +2,24 @@ from sklearn.model_selection import KFold
 import yaml
 import numpy as np
 from pathlib import Path
-from ._coords_transition import yolo2xyxy, xywh2xyxy
-from ._path import list_ext, list_images, _cp_file_list
+
+try:
+    from ._coords_transition import yolo2xyxy, xywh2xyxy
+    from ._path import list_ext, list_images, _cp_file_list
+except:
+    from _coords_transition import yolo2xyxy, xywh2xyxy
+    from _path import list_ext, list_images, _cp_file_list
 # from _path import list_ext, list_images, _cp_file_list
 import shutil
 import cv2
+
 try:
     from ultralytics import YOLO
 except:
     print("Can't yolo model")
 from tqdm import tqdm
 import pandas as pd
-
+import argparse
 
 RANDOM_STATE = 101
 
@@ -43,17 +49,17 @@ class ImageWithBoxs:
             slices[i] = {"image": self.image[y1:y2, x1:x2, :], "box": [x1, y1, x2, y2]}
         return slices
 
-def split_with_file(path2image: str,
-                    path2label: str,
-                    path2filesplit: str,
-                    path2save: str):
+
+def split_with_file(
+    path2image: str, path2label: str, path2filesplit: str, path2save: str
+):
     path2image = Path(path2image)
     path2label = Path(path2label)
     frame = pd.read_csv(path2filesplit)
-    train_names = [f.split('.')[0] for f in frame[frame.train == 1].name.to_list()]
-    val_names = [f.split('.')[0] for f in frame[frame.val == 1].name.to_list()]
-    test_names = [f.split('.')[0] for f in frame[frame.test == 1].name.to_list()]
-    f_images = [f for f in list_images(path2image)] 
+    train_names = [f.split(".")[0] for f in frame[frame.train == 1].name.to_list()]
+    val_names = [f.split(".")[0] for f in frame[frame.val == 1].name.to_list()]
+    test_names = [f.split(".")[0] for f in frame[frame.test == 1].name.to_list()]
+    f_images = [f for f in list_images(path2image)]
     f_labels = [f for f in list_ext(path2label)]
     print(f_images)
     # print(f_labels)
@@ -64,25 +70,50 @@ def split_with_file(path2image: str,
         shutil.rmtree(path2save)
     path2save.mkdir()
     print([path2image / f for f in f_images if Path(f) in train_names])
-    _cp_file_list(path2save,"train/", [path2image / f for f in f_images if Path(f).stem in train_names])
-    _cp_file_list(path2save,"train/", [path2label / f for f in f_labels if Path(f).stem in train_names])
+    _cp_file_list(
+        path2save,
+        "train/",
+        [path2image / f for f in f_images if Path(f).stem in train_names],
+    )
+    _cp_file_list(
+        path2save,
+        "train/",
+        [path2label / f for f in f_labels if Path(f).stem in train_names],
+    )
 
-    _cp_file_list(path2save,"val/", [path2image / f for f in f_images if Path(f).stem in val_names])
-    _cp_file_list(path2save,"val/", [path2label / f for f in f_labels if Path(f).stem in val_names])
+    _cp_file_list(
+        path2save,
+        "val/",
+        [path2image / f for f in f_images if Path(f).stem in val_names],
+    )
+    _cp_file_list(
+        path2save,
+        "val/",
+        [path2label / f for f in f_labels if Path(f).stem in val_names],
+    )
 
-    _cp_file_list(path2save,"test/", [path2image / f for f in f_images if Path(f).stem in test_names])
-    _cp_file_list(path2save,"test/", [path2label / f for f in f_labels if Path(f).stem in test_names])
+    _cp_file_list(
+        path2save,
+        "test/",
+        [path2image / f for f in f_images if Path(f).stem in test_names],
+    )
+    _cp_file_list(
+        path2save,
+        "test/",
+        [path2label / f for f in f_labels if Path(f).stem in test_names],
+    )
     yaml_config = {
-            "names": ["stone"],
-            "nc": 1,
-            "path": str(path2save),
-            "train": "./train",
-            "val": "./val",
-            "test": "./test"
-        }
+        "names": ["stone"],
+        "nc": 1,
+        "path": str(path2save),
+        "train": "./train",
+        "val": "./val",
+        "test": "./test",
+    }
 
     with open(path2save / "config.yaml", "w") as file:
         yaml.dump(yaml_config, file)
+
 
 def k_fold_split_yolo(
     path2label: str,
@@ -148,7 +179,6 @@ def k_fold_split_yolo(
         with open(path_2_fold / "config.yaml", "w") as file:
             yaml.dump(yaml_config, file)
         print(kf, len(train_indxs), len(test_indxs), path_2_fold)
-    
 
 
 def is_valid_slice(image, model, conf=0.6):
@@ -355,14 +385,47 @@ def filter_bboxs_by_network(
 
 
 if __name__ == "__main__":
-    split_with_file("/storage/reshetnikov/open_pits_merge/merge_fraction/split/images",
-                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/keypoint/",
-                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/files_split.csv",
-                    "/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split_kpnt/")
-    
-    # k_fold_split_yolo(
-    #     "/storage/reshetnikov/open_pits_merge/obb_yolo8/anno/",
-    #     "/storage/reshetnikov/open_pits_merge/image_jpg/",
-    #     "/storage/reshetnikov/open_pits_merge/obb_yolo8/Fold/",
-    #     4,
-    # )
+
+    parser = argparse.ArgumentParser(
+        description="Convert labels to other coordinate system."
+    )
+    parser.add_argument(
+        "--path2label",
+        type=str,
+        help="Input directory with labels files",
+        default="",
+    )
+
+    parser.add_argument(
+        "--path2image",
+        type=str,
+        help="Directory with images",
+        default="/storage/reshetnikov/open_pits_merge/images",
+    )
+
+    parser.add_argument(
+        "--save_dir",
+        type=str,
+        help="Save directory with converted labels files.",
+        default="/storage/reshetnikov/open_pits_merge/add_sam/max_line/",
+    )
+
+    parser.add_argument(
+        "--n_fold",
+        type=int,
+        help="Number fold for splite",
+        default=4,
+    )
+
+    args = parser.parse_args()
+    print(args)
+    k_fold_split_yolo(
+        args.path2label,
+        args.path2image,
+        args.save_dir,
+        args.n_fold,
+    )
+    # split_with_file("/storage/reshetnikov/open_pits_merge/merge_fraction/split/images",
+    #             "/storage/reshetnikov/open_pits_merge/merge_fraction/split/keypoint/",
+    #             "/storage/reshetnikov/open_pits_merge/merge_fraction/split/files_split.csv",
+    #             "/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split_kpnt/")

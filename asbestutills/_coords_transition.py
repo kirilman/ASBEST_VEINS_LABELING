@@ -3,9 +3,11 @@ import sys
 import os
 
 sys.path.append(os.getcwd())
-# from _path import list_ext, create_dir
+try:
+    from ._path import list_ext, create_dir
+except:
+    from _path import list_ext, create_dir
 
-from ._path import list_ext, create_dir
 from pathlib import Path
 import json
 

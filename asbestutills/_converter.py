@@ -316,7 +316,7 @@ class Yolo2Coco:
                 "name": "openpits asbestos",
             }
         ]
-        class_names = {0: "stone", 1: "stone", 2: "yolo_stone"}
+        class_names = {0: "license", 1: "license", 2: "yolo_stone"}
         categories = [
             {"id": _cls, "name": class_names[_cls], "supercategory": ""}
             for _cls in classes
