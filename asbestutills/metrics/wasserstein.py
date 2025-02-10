@@ -13,18 +13,21 @@ sys.path.append("/storage/reshetnikov/yolov8_rotate/")
 # from yolov10.ultralytics.nn.tasks import YOLOv10DetectionModel
 # print(YOLOv10DetectionModel)
 
-def var_confidence(path2model, path2source, path2save, conf_step, max_det):
+def var_confidence(path2model, path2source, path2save, conf_step, max_det, imgsz = 640, device = 'cuda'):
+    """
+        Варьировать параметр conf_tresh и получить предсказания Yolo
+    """
     state = torch.load(path2model)
     # if isinstance(state['model'], YOLOv10DetectionModel):
     #     model = YOLOv10(model=path2model)
     # else:
     #     model = YOLO(model=path2model)
     model = YOLO(model=path2model)
-    model.to( device='cuda:2')
+    model.to(device=device)
     for conf in np.arange(0.05, 0.85, conf_step):
         c = np.round(conf,2)
         name = "conf_{}".format(c)
-        model.predict(source = path2source, save = False, imgsz = 640, conf = c, project = path2save, name = name, save_txt = True, max_det = max_det)
+        model.predict(source = path2source, save = False, imgsz = imgsz, conf = c, project = path2save, name = name, save_txt = True, max_det = max_det)
         if model.task == 'segment':
             conv = Yolo2Coco(Path(path2save) / f"conf_{c}/labels/", path2source, Path(path2save) / f"conf_{c}/labels/predict.json", )
             conv.convert()
