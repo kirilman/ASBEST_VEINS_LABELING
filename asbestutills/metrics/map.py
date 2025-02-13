@@ -8,13 +8,81 @@ from torch import tensor
 import cv2 
 import pandas as pd
 from asbestutills._converter import yolo2coco,box2segment
+from concurrent.futures import ProcessPoolExecutor
+import concurrent.futures
 
 def read_segmentation_labels(p):
     with open(p, 'r') as f:
         lines = f.readlines()
         return [np.fromstring(line, sep=' ').tolist() for line in lines]
+    
 
-def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_json = True, path2save = None):
+def calculate_mertics(path2pred, path2label, format, scale = 640):
+    data = read_segmentation_labels(path2pred)
+    labels = torch.tensor(np.array([x[0]+1 for x in data], dtype = np.int32), dtype = torch.long) 
+    scores = torch.tensor([1.0]*len(labels)) 
+    boxes  = [x[1:] for x in data]
+    mask_pred = np.zeros((len(data), scale, scale))
+    for i, line in enumerate(data):
+        if len(line)<5:
+            print(f"{i}/{len(data)}, ",path2pred)
+            continue
+        coords = np.array(line[1:]).reshape(-1,2)
+        coords*=scale
+        coords = coords.astype(np.int32)
+        mask = np.zeros((scale, scale))
+        cv2.fillPoly(mask, [coords], 1)
+        if np.sum(mask)>10:
+            mask = mask.astype(bool)
+        else:
+            mask = np.zeros((scale, scale))
+        mask_pred[i] = mask
+    
+    preds = [
+    dict(
+        masks=tensor(mask_pred, dtype=torch.bool),
+        scores=scores,
+        labels=labels,
+    )
+    ]
+    #targets------------------
+    data = read_segmentation_labels(path2label)
+    labels = torch.tensor(np.array([x[0] for x in data], dtype = np.int32), dtype = torch.long) + 1
+    boxes  = [x[1:] for x in data]
+    mask_tgt = np.zeros((len(data), scale, scale))
+    for i, line in enumerate(data):
+        if len(line)<5:
+            print(f"{i}/{len(data)}, ",path2label)
+            continue
+        coords = np.array(line[1:]).reshape(-1,2)
+        coords*=scale
+        coords = coords.astype(np.int32)
+        mask = np.zeros((scale, scale))
+        cv2.fillPoly(mask, [coords], 1)
+        if np.sum(mask)>10:
+            mask = mask.astype(bool)
+        else:
+            mask = np.zeros((scale, scale))
+        mask_tgt[i] = mask
+        
+    target = [
+    dict(
+        masks=tensor(mask_tgt, dtype=torch.bool),
+        labels=labels,
+    )
+    ]
+    
+    metric = MeanAveragePrecision(box_format=format, iou_type='segm', max_detection_thresholds = [1,100, 1500])
+    
+    metric.update(preds, target)
+    metric.update(preds, target)
+    res = metric.compute()
+    res['iou'] = _cumpute_iou(preds, target) 
+    res["file"] = Path(path2pred).name
+    return res 
+
+
+def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = True, path2save = None):
     """
         Compute mAP metric on files txt yolo format using torchmetrics
     Args:
@@ -28,7 +96,7 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_json = 
     """
     file_names = {Path(f).stem:f for f in list(Path(path2pred).glob("*.txt"))}
     file_names_target = {Path(f).stem:f for f in list(Path(path2anno).glob("*.txt"))}
-    print(file_names)
+    # print(file_names[:5])
     map = []
     assert type in ('bbox', 'segm'), f"Expected argument `type` to be one of ('bbox', 'segm') but got {type}"
     if type == 'bbox':
@@ -73,77 +141,17 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_json = 
             map.append(res)   
 
     else:
-        for fname, fpath in tqdm(file_names.items()): 
-            try:
-                #predicts------------------
-                data = read_segmentation_labels(fpath)
-                labels = torch.tensor(np.array([x[0]+1 for x in data], dtype = np.int32), dtype = torch.long) 
-                scores = torch.tensor([1.0]*len(labels)) 
-                boxes  = [x[1:] for x in data]
-                scale = 640
-                mask_pred = np.zeros((len(data), scale, scale))
-                for i, line in enumerate(data):
-                    if len(line)<5:
-                        print(f"{i}/{len(data)}, ",fpath)
-                        continue
-                    coords = np.array(line[1:]).reshape(-1,2)
-                    coords*=scale
-                    coords = coords.astype(np.int32)
-                    mask = np.zeros((scale, scale))
-                    cv2.fillPoly(mask, [coords], 1)
-                    if np.sum(mask)>10:
-                        mask = mask.astype(bool)
-                    else:
-                        mask = np.zeros((scale, scale))
-                    mask_pred[i] = mask
-        
-                
-                preds = [
-                dict(
-                    masks=tensor(mask_pred, dtype=torch.bool),
-                    scores=scores,
-                    labels=labels,
-                )
-                ]
-                #targets------------------
-                data = read_segmentation_labels(file_names_target[fname])
-                labels = torch.tensor(np.array([x[0] for x in data], dtype = np.int32), dtype = torch.long) + 1
-                boxes  = [x[1:] for x in data]
-                mask_tgt = np.zeros((len(data), scale, scale))
-                for i, line in enumerate(data):
-                    if len(line)<5:
-                        print(f"{i}/{len(data)}, ",fpath)
-                        continue
-                    coords = np.array(line[1:]).reshape(-1,2)
-                    coords*=scale
-                    coords = coords.astype(np.int32)
-                    mask = np.zeros((scale, scale))
-                    cv2.fillPoly(mask, [coords], 1)
-                    if np.sum(mask)>10:
-                        mask = mask.astype(bool)
-                    else:
-                        mask = np.zeros((scale, scale))
-                    mask_tgt[i] = mask
-                    
-                target = [
-                dict(
-                    masks=tensor(mask_tgt, dtype=torch.bool),
-                    labels=labels,
-                )
-                ]
+        scale = 640
+        try:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
+                futures = {executor.submit(calculate_mertics, fpath, file_names_target[fname], format):fname for fname, fpath in tqdm(file_names.items())}
+                for future in concurrent.futures.as_completed(futures):
+                    res = future.result()
+                    map.append(res) 
+        except Exception as err:
+            print(err)
 
-                metric = MeanAveragePrecision(box_format=format, iou_type='segm', max_detection_thresholds = [1,100, 1500])
-                
-                metric.update(preds, target)
-                metric.update(preds, target)
-                res = metric.compute()
-                res['iou'] = _cumpute_iou(preds, target) 
-                res["file"] = Path(fpath.name)
-                map.append(res)   
-            except Exception as err:
-                print(err)
-
-    if save_json:
+    if save_csv:
         map_np = []
         if path2save == None:
             path2save = Path('map_result.csv')

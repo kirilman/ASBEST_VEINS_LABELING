@@ -386,6 +386,7 @@ def coco2obb(path2json, path2save):
         current_fname = str(
             df_image[df_image.id == row.image_id]["file_name"].values[0].split(".")[0]
         )
+        
         if fname == current_fname:
             line = (
                 "{:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {} 0\n".format(
@@ -414,11 +415,13 @@ def coco2obb_maxline(path2json, path2save, norm=True):
     df_image = pd.DataFrame(coco.imgs).T
     image_dict = df_image.T.to_dict()
     df_image = pd.DataFrame(coco.imgs).T
-    fname = str(
-        df_image[df_image.id == frame.iloc[0].image_id]["file_name"]
-        .values[0]
-        .split(".")[0]
-    )
+    t = df_image[df_image.id == frame.iloc[0].image_id]["file_name"].values[0]
+    fname = ".".join(t.split(".")[:-1])
+    # fname = str(
+    #     df_image[df_image.id == frame.iloc[0].image_id]["file_name"]
+    #     .values[0]
+    #     .split(".")[0]
+    # )
     file_out = open(Path(path2save) / (fname + ".txt"), "w")
     print(fname, file_out)
     number = 0
@@ -513,9 +516,12 @@ def coco2obb_maxline(path2json, path2save, norm=True):
             data[1::2] = data[1::2] / IMAGE_H
 
         cls_id = 0
-        current_fname = str(
-            df_image[df_image.id == row.image_id]["file_name"].values[0].split(".")[0]
-        )
+        # current_fname = str(
+        #     df_image[df_image.id == row.image_id]["file_name"].values[0].split(".")[0]
+        # )
+        t = df_image[df_image.id == row.image_id]["file_name"].values[0]
+        current_fname = ".".join(t.split(".")[:-1])
+
         if fname == current_fname:
             line = "{:d} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} {:.3f} \n".format(
                 cls_id, *data
