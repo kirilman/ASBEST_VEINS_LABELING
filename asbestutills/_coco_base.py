@@ -4,7 +4,7 @@ import json
 import cv2
 from pycocotools import mask as cocoutils
 from typing import List
-from .plotter.plotting import drawpoly, drawline
+from asbestutills.plotter.plotting import drawpoly, drawline
 
 # -----------------------------------
 def _ann2mask(ann, h, w):

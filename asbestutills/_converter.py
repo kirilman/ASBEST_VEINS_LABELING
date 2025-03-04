@@ -785,7 +785,51 @@ def coco2box(path2json, path2images, path2save):
     dataset = importer.ImportCoco(path=path2json, path_to_images=path2images)
     dataset.export.ExportToYoloV5(path2save)
 
-
+def obb2dota(path2txt, path2image, path2save):
+    """
+        Convert yolo obb [x1,y1,x2,y2,,x3,y3,x4,y4] format to dota obb  
+    """
+    name = "stone"
+    path2txt = Path(path2txt)
+    path2image = Path(path2image)
+    path2save = Path(path2save)
+    f_labels = list_ext(path2txt, "txt")
+    f_images = {Path(x).stem: path2image / x for x in list_images(path2image)}
+    print(f_images)
+    for fpath in f_labels:
+        f_image = f_images[Path(fpath).stem]
+        print(f_image)
+        img = cv2.imread(str(f_image))
+        if len(img.shape) == 3:
+            h, w, _ = img.shape
+        else:
+            h, w = img.shape   
+        
+        with open(path2txt / fpath, 'r') as file:
+            xy = np.loadtxt(file)
+        print(path2txt / fpath)
+        print(xy)
+        # xy = np.array([x.split(" ")[:8] for x in data], dtype = np.float16)
+        # print(xy)
+        
+        if len(xy.shape) == 1:
+            xy = xy.reshape(-1,1)
+        xy = xy[:,1:]
+        xy[:,0::2]*=w
+        xy[:,1::2]*=h
+        fsave= path2save / fpath
+        print(xy)
+        with open(fsave, 'w') as file:
+            xy = np.int_(xy).astype(str)
+            for line in xy:
+                try:
+                    print(line)
+                    s = " ".join(line.tolist() + ["stone", "0\n"]) 
+                    print(s)
+                    file.write(s)
+                except:
+                    pass
+        # break
 if __name__ == "__main__":
     # conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/test/",
     #                 "/storage/reshetnikov/openpits/fold/Fold_0/test/",
@@ -840,5 +884,7 @@ if __name__ == "__main__":
         convert_coco_json(args.inpt_dir, args.save_dir, True)
     elif args.type == "detectron":
         convert_detecton2_to_coco(args.inpt_dir, args.image_dir, args.save_dir)
+    elif args.type == "obb2dota":
+        obb2dota(args.inpt_dir, args.image_dir, args.save_dir)
     else:
         print(f'{args.type} not found')

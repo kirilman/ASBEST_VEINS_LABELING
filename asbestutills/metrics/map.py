@@ -10,6 +10,7 @@ import pandas as pd
 from asbestutills._converter import yolo2coco,box2segment
 from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
+import gc
 
 def read_segmentation_labels(p):
     with open(p, 'r') as f:
@@ -96,12 +97,12 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = T
     """
     file_names = {Path(f).stem:f for f in list(Path(path2pred).glob("*.txt"))}
     file_names_target = {Path(f).stem:f for f in list(Path(path2anno).glob("*.txt"))}
-    # print(file_names[:5])
+    print(len(file_names.items()), len(file_names_target.items()))
     map = []
     assert type in ('bbox', 'segm'), f"Expected argument `type` to be one of ('bbox', 'segm') but got {type}"
     if type == 'bbox':
         for fname, fpath in tqdm(file_names.items()): 
-            
+            print(fname, sep = '\n', flush=True)
             with open(fpath,"r") as f:
                 data = np.loadtxt(f)
             #если ключевые точки
@@ -143,11 +144,13 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = T
     else:
         scale = 640
         try:
-            with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=15) as executor:
                 futures = {executor.submit(calculate_mertics, fpath, file_names_target[fname], format):fname for fname, fpath in tqdm(file_names.items())}
                 for future in concurrent.futures.as_completed(futures):
                     res = future.result()
                     map.append(res) 
+                    del future
+                    gc.collect()
         except Exception as err:
             print(err)
 

@@ -6,6 +6,10 @@ setup(name='asbestutills',
       version='0.2.5',
       description='Python Asbest Utilities',
       url='https://www.python.org/sigs/distutils-sig/',
-      packages=['asbestutills'],              # List of module names that installing
+      # packages=['asbestutills'],              # List of module names that installing
+      packages = find_packages('.'),
+      #   include=[
+      #       'asbestutills'
+      #   ]),
       # package_dir={'':'asbestutills'},
      )

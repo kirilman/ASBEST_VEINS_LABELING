@@ -55,8 +55,8 @@ def wasserstein(path2pred, path2label):
                 max_size = collect_segmentation_maxsize(json_files[0], names)
             else:
                 max_size = collect_maxsize_obbox_for_prediction(ssub, None)
-            
-            results[conf_name] = wasserstein_distance(max_size_label, max_size)
+            if len(max_size) > 0 and len(max_size_label)>0:
+                results[conf_name] = wasserstein_distance(max_size_label, max_size)
     df = pd.DataFrame([results]).T
     df.to_csv(path2pred / "conf.csv")
 
@@ -87,11 +87,11 @@ if __name__ == "__main__":
     #                0.05, max_det = 2500)
     # wasserstein(path2save, path2label)
 
-    # path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/cascade_3x_segm/'
-    # path2label = '/storage/reshetnikov/open_pits_merge/merge_fraction/split/images/anno.json'
+    path2save = '/storage/reshetnikov/disser/notebooks/runs/compate/bench_300_0/'
+    path2label = '/storage/reshetnikov/open_pits_merge/merge_fraction/split/images/anno.json'
 
-    path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/rocks/cascade_3x_segm/'
-    path2label = '/storage/reshetnikov/rocks_blasting/anno.json'
+    # path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/rocks/cascade_3x_segm/'
+    # path2label = '/storage/reshetnikov/rocks_blasting/anno.json'
     # path2save = '/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/validation/segm_v9'
     # var_confidence('/storage/reshetnikov/runs/fraction_obb/box_10x/weights/yolov10x.pt',
     #                '/storage/reshetnikov/open_pits_merge/merge_fraction/split/train_split/test/',
