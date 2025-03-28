@@ -4,7 +4,7 @@ def get_masks(image_anno):
     h = image_anno['height'] 
     w = image_anno['width' ]
     mask_anns = image_anno['annotations']
-    mask = np.zeros((h,w, len(mask_anns)))
+    mask = np.zeros((h,w, len(mask_anns)),  dtype = np.uint8)
     for i,ann in enumerate(mask_anns):
         mask[:,:,i] = _ann2mask(ann,h,w)
     return mask

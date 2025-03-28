@@ -6,7 +6,7 @@ import pandas as pd
 from pprint import pprint
 from pathlib import Path
 import cv2
-
+from multiprocessing import Pool
 from ._annotation_base import (_set_cat_names,
                                _cat_ids,
                                _filter_cat,
@@ -443,8 +443,22 @@ class Annotation():
 
         h = img_desc['height'] 
         w = img_desc['width' ]
-        
-        out = np.asarray([_ann2mask(ann,h,w) for ann in anns])
+        out = np.zeros((h, w, len(anns)), dtype=np.uint8)
+        for ann in anns:
+                # Create a pool of workers
+          with Pool(processes=4) as pool:
+              # Prepare arguments for each annotation
+              args = [(ann, h, w) for ann in anns]
+              
+              # Process masks in parallel
+              results = pool.starmap(_ann2mask, args)
+              
+              # Combine results
+              for i, instant_mask in enumerate(results):
+                  out[:, :, i] = instant_mask
+
+
+        # out = np.asarray([_ann2mask(ann,h,w) for ann in anns])
         if mode == '3d array': out = _masks2image(out)
         if mode == '2d array': out = _masks2d(out)
         if mode == 'semseg': out = _masks2d(out); out[out>0]=1
