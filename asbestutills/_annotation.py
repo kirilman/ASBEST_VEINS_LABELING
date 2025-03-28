@@ -432,6 +432,7 @@ class Annotation():
              where each instant have different value in range from 0 to max.
           * 'semseg':  output is the 2d ndarray in format height x width,
              where each instant have same value 1.
+          * 'cumsum': 
         Returns
         ----------
         ndarray: image like array .
@@ -444,9 +445,16 @@ class Annotation():
         h = img_desc['height'] 
         w = img_desc['width' ]
         out = np.zeros((h, w, len(anns)), dtype=np.uint8)
+
+        if mode == 'cumsum':
+          out = out = np.zeros((h, w), dtype=np.uint8)
+          for ann in anns:
+              out+= np.asarray(_ann2mask(ann,h,w))
+          out[out>1] = 1
+          return out
         for ann in anns:
                 # Create a pool of workers
-          with Pool(processes=4) as pool:
+          with Pool(processes=10) as pool:
               # Prepare arguments for each annotation
               args = [(ann, h, w) for ann in anns]
               
