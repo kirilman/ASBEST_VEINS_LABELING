@@ -20,6 +20,7 @@ except:
 from tqdm import tqdm
 import pandas as pd
 import argparse
+import os
 
 RANDOM_STATE = 101
 
@@ -382,6 +383,19 @@ def filter_bboxs_by_network(
         with open(path2save / path.name, "w") as f_out:
             for line in filter_lines:
                 f_out.writelines(line)
+
+def add_yolotxt_in_fold(path2fold, path2txt):
+    """
+        Добавть txt разметку внутри папки fold
+    """
+    path2fold = Path(path2fold)
+    path2txt  = Path(path2txt)
+    folders = [f for f in path2fold.iterdir() if f.is_dir()]
+    for subdir in folders:
+        f_names = list_images(subdir)
+        for f_name in f_names:
+            f_stem = Path(f_name).stem
+            os.symlink(path2txt / (f_stem + ".txt"), subdir / (f_stem + ".txt"))
 
 
 if __name__ == "__main__":
