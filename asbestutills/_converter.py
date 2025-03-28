@@ -5,8 +5,10 @@ import pandas as pd
 from tqdm import main
 from tqdm import tqdm
 try:
+    from ._annotation import Annotation
     from ._path import list_ext, list_images
 except:
+    from _annotation import Annotation
     from _path import list_ext, list_images
 
 from pathlib import Path
@@ -824,6 +826,30 @@ def obb2dota(path2txt, path2image, path2save):
                 except:
                     pass
         # break
+                
+def coco2ade(path2cocojson, path2image, path2save):
+    """
+        Конвеерт ADE20:
+            mask.png format
+            mask[:,:,0] - ids
+            mask[:,:,1] - instances masks
+            mask[:,;,2] - zeros values
+    """
+    path2save = Path(path2save)
+    annotator = Annotation(path2cocojson)
+    for img in tqdm(annotator.data['images']):
+        _id = img['id']
+        masks = annotator.get_masks(_id, mode='cumsum')
+        bin_mask = masks
+        bin_mask[bin_mask>1] = 1
+        bin_mask = np.where(bin_mask == 1, 2 ,1)
+        aie_mask = np.zeros((*bin_mask.shape,3))
+        aie_mask[:,:,0] = bin_mask[:,:]
+        aie_mask[:,:,1] = bin_mask[:,:]
+        f_name = Path(img['file_name']).stem
+        cv2.imwrite(str(path2save / (f_name + '.png')), aie_mask)
+
+
 if __name__ == "__main__":
     # conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/test/",
     #                 "/storage/reshetnikov/openpits/fold/Fold_0/test/",
@@ -857,7 +883,7 @@ if __name__ == "__main__":
         "--type",
         type=str,
         default="keypoint",
-        help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files; 'obb' - obb; 'yolo2coco'; 'coco2yolo'; 'keypoint' \n",
+        help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files; 'obb' - obb; 'yolo2coco'; 'coco2yolo'; 'keypoint'; coco2ade \n",
     )
     args = parser.parse_args()
     print(args, args.type)
@@ -880,5 +906,7 @@ if __name__ == "__main__":
         convert_detecton2_to_coco(args.inpt_dir, args.image_dir, args.save_dir)
     elif args.type == "obb2dota":
         obb2dota(args.inpt_dir, args.image_dir, args.save_dir)
+    elif args.type == 'coco2ade':
+        coco2ade(args.inpt_dir, args.image_dir, args.save_dir)
     else:
         print(f'{args.type} not found')
