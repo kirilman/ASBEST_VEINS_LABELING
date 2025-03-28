@@ -795,10 +795,8 @@ def obb2dota(path2txt, path2image, path2save):
     path2save = Path(path2save)
     f_labels = list_ext(path2txt, "txt")
     f_images = {Path(x).stem: path2image / x for x in list_images(path2image)}
-    print(f_images)
     for fpath in f_labels:
         f_image = f_images[Path(fpath).stem]
-        print(f_image)
         img = cv2.imread(str(f_image))
         if len(img.shape) == 3:
             h, w, _ = img.shape
@@ -807,25 +805,21 @@ def obb2dota(path2txt, path2image, path2save):
         
         with open(path2txt / fpath, 'r') as file:
             xy = np.loadtxt(file)
-        print(path2txt / fpath)
-        print(xy)
+
         # xy = np.array([x.split(" ")[:8] for x in data], dtype = np.float16)
         # print(xy)
         
         if len(xy.shape) == 1:
-            xy = xy.reshape(-1,1)
+            xy = xy.reshape(1,-1)
         xy = xy[:,1:]
         xy[:,0::2]*=w
         xy[:,1::2]*=h
         fsave= path2save / fpath
-        print(xy)
         with open(fsave, 'w') as file:
             xy = np.int_(xy).astype(str)
             for line in xy:
                 try:
-                    print(line)
                     s = " ".join(line.tolist() + ["stone", "0\n"]) 
-                    print(s)
                     file.write(s)
                 except:
                     pass
