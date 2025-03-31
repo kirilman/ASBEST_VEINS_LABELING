@@ -444,7 +444,7 @@ class Annotation():
 
         h = img_desc['height'] 
         w = img_desc['width' ]
-        out = np.zeros((h, w, len(anns)), dtype=np.uint8)
+        out = np.zeros((len(anns), h, w), dtype=np.uint8)
 
         if mode == 'cumsum':
           out = out = np.zeros((h, w), dtype=np.uint8)
@@ -452,18 +452,21 @@ class Annotation():
               out+= np.asarray(_ann2mask(ann,h,w))
           out[out>1] = 1
           return out
-        for ann in anns:
-                # Create a pool of workers
-          with Pool(processes=10) as pool:
-              # Prepare arguments for each annotation
-              args = [(ann, h, w) for ann in anns]
+        
+        for k, ann in enumerate(anns):
+            out[k, :, :] = _ann2mask(ann, h, w)
+        # for ann in anns:
+        #         # Create a pool of workers
+        #   with Pool(processes=10) as pool:
+        #       # Prepare arguments for each annotation
+        #       args = [(ann, h, w) for ann in anns]
               
-              # Process masks in parallel
-              results = pool.starmap(_ann2mask, args)
+        #       # Process masks in parallel
+        #       results = pool.starmap(_ann2mask, args)
               
-              # Combine results
-              for i, instant_mask in enumerate(results):
-                  out[:, :, i] = instant_mask
+        #       # Combine results
+        #       for i, instant_mask in enumerate(results):
+        #           out[:, :, i] = instant_mask
 
 
         # out = np.asarray([_ann2mask(ann,h,w) for ann in anns])
