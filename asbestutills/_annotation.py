@@ -7,7 +7,7 @@ from pprint import pprint
 from pathlib import Path
 import cv2
 from multiprocessing import Pool
-from _annotation_base import (_set_cat_names,
+from ._annotation_base import (_set_cat_names,
                                _cat_ids,
                                _filter_cat,
                                _replace_image_dir,
@@ -17,23 +17,23 @@ from _annotation_base import (_set_cat_names,
                                _count_anno_at_images,
                               )
 
-from _reset_annotation import (_reset_indexes,
+from ._reset_annotation import (_reset_indexes,
                                 _reset_images,
                                 _reset_labels,
                                 _reset_image_sizes, 
                                 reset_annotation)
 
-from _image_base import (_resize_imgs,
+from ._image_base import (_resize_imgs,
                           _imgs2gray)
 
-from _coco_base import (_ann2mask,
+from ._coco_base import (_ann2mask,
                          _masks2image,
                          _masks2d,
                          _image_with_bbox,
                          _image_with_contours,
                          _image_with_obbox)
 
-from utils.geometry import segment2obb, coords_max_line, distance, coords_other_line_by_coords
+from .utils.geometry import segment2obb, coords_max_line, distance, coords_other_line_by_coords
 
 
 class Annotation():
@@ -447,7 +447,7 @@ class Annotation():
         out = np.zeros((len(anns), h, w), dtype=np.uint8)
 
         if mode == 'cumsum':
-          out = out = np.zeros((h, w), dtype=np.uint8)
+          out = np.zeros((h, w), dtype=np.uint8)
           for ann in anns:
               out+= np.asarray(_ann2mask(ann,h,w))
           out[out>1] = 1

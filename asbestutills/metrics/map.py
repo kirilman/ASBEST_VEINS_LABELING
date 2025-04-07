@@ -11,6 +11,7 @@ from asbestutills._converter import yolo2coco,box2segment
 from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 import gc
+import os
 
 def read_segmentation_labels(p):
     with open(p, 'r') as f:
@@ -83,7 +84,7 @@ def calculate_mertics(path2pred, path2label, format, scale = 640):
     return res 
 
 
-def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = True, path2save = None):
+def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = True, path2save = None, max_workers = 8):
     """
         Compute mAP metric on files txt yolo format using torchmetrics
     Args:
@@ -102,9 +103,10 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = T
     assert type in ('bbox', 'segm'), f"Expected argument `type` to be one of ('bbox', 'segm') but got {type}"
     if type == 'bbox':
         for fname, fpath in tqdm(file_names.items()): 
-            print(fname, sep = '\n', flush=True)
             with open(fpath,"r") as f:
                 data = np.loadtxt(f)
+            if len(data) == 0:
+                continue
             #если ключевые точки
             if data.shape[1]>5:
                 print(f'{fpath} is keypoint prediction file')
@@ -144,7 +146,7 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = T
     else:
         scale = 640
         try:
-            with concurrent.futures.ProcessPoolExecutor(max_workers=15) as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
                 futures = {executor.submit(calculate_mertics, fpath, file_names_target[fname], format):fname for fname, fpath in tqdm(file_names.items())}
                 for future in concurrent.futures.as_completed(futures):
                     res = future.result()
@@ -163,6 +165,7 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = T
             d = dict(zip(item.keys(),values))
             map_np.append(d)
             pd.DataFrame(map_np).to_csv(path2save,index = False)
+            print(f'Save map result to {path2save}')
     return map
 
 def _cumpute_iou(pred, target):
@@ -201,6 +204,63 @@ def _cumpute_iou(pred, target):
     # print(mask.shape, targ.shape, mask.dtype, targ.dtype,mask.min(), mask.max(), targ.min(), targ.max())
     mean_iou = MeanIoU(num_classes=1)
     return mean_iou(mask, targ)
+
+def predictionformat(coors):
+    """
+        coors: List[List] список координат из файла YOLO
+        Формат предсказаний для txt файла YOLO
+    """
+    lens = []
+    for c in coors:
+       lens.append(len(c)) 
+    n_min = np.min(lens)
+    n_max = np.max(lens)
+    if n_max - n_min > 0:
+        return 'segm'
+    elif n_max == 5:
+        return 'box'
+    elif n_max == 9:
+        return 'obb'
+    elif n_max == 13:
+        return 'kpnt'
+    
+def culculate_map(path2dir = "/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var",
+                      path2anno = "/storage/reshetnikov/open_pits_merge/merge_fraction/split/images/anno.json",
+                    folder_exc = ['cascade_3x_old', 'box_v9'],
+                    path2labels = {"obb":"/storage/reshetnikov/open_pits_merge/merge_fraction/split/obb",
+                                   "segm":"/storage/reshetnikov/open_pits_merge/merge_fraction/split/segment",
+                                   "box":"/storage/reshetnikov/open_pits_merge/merge_fraction/split/yolo"}):
+    path2dir = Path(path2dir)
+    path2anno = Path(path2anno)
+    dirs = sorted(list(Path(path2dir).glob("*/")))
+    dirs = dirs[0],dirs[-2],dirs[5]
+    print(dirs)
+    dirs = [dirs[-2]]
+    for _dir in dirs:
+        if _dir.parts[-1] in folder_exc:
+            continue
+        for sub_dir in _dir.glob("*"):
+            if sub_dir.is_dir():
+                for p1, sdirs, files in os.walk(sub_dir):
+                    if 'labels' in sdirs: #заходим в labels
+                        p2pred = Path(p1)/sdirs[0]
+                        f_labels = list(p2pred.glob("*.txt"))
+                        coors = read_segmentation_labels(f_labels[0])
+                        ft = predictionformat(coors)
+                        path2label = path2labels[ft]
+                        if ft == 'box':
+                            ft = 'b' + ft
+                        elif ft =='obb':
+                            ft = 'segm'
+                        conf_name = sub_dir.parts[-1]
+                        print(sub_dir/f"map_{conf_name}.csv")
+                        if ft == 'bbox':
+                            res = compute_map(p2pred, path2label, "xywh", ft, True, sub_dir/f"map_{conf_name}.csv")
+                        else:
+                            res = compute_map(p2pred, path2label, "xyxy", ft, True, sub_dir/f"map_{conf_name}.csv", max_workers = 8)
+            # pathlabel = datasources[nfold] 
+            # print( dir/sdir.name/f"map_{sdir.name}.csv")
+            # res = compute_map(path2pred, pathlabel, "xyxy","segm", True, dir/sdir.name/f"map_{sdir.name}.csv")
 
 if __name__ == '__main__':
     map = compute_map("/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/box_v10x/conf_0.25/labels/",
