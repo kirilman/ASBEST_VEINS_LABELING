@@ -41,7 +41,8 @@ def list_dirs(path, exclude_if_startwith=(".", "__")):
     return listdir
 
 
-# ----------------------------------------------
+# --
+# --------------------------------------------
 def list_images(dirpath, ext=IMAGE_EXTENTIONS):
     """
     List of file names in directory,
