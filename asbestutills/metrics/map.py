@@ -18,7 +18,7 @@ def read_segmentation_labels(p):
         return [np.fromstring(line, sep=' ').tolist() for line in lines]
     
 
-def calculate_mertics(path2pred, path2label, format, scale = 640):
+def calculate_mertics(path2pred, path2label, format, cal_iou = False, scale = 640):
     data = read_segmentation_labels(path2pred)
     labels = torch.tensor(np.array([x[0]+1 for x in data], dtype = np.int32), dtype = torch.long) 
     scores = torch.tensor([1.0]*len(labels)) 
@@ -73,17 +73,18 @@ def calculate_mertics(path2pred, path2label, format, scale = 640):
     )
     ]
     
-    metric = MeanAveragePrecision(box_format=format, iou_type='segm', max_detection_thresholds = [1,100, 1500])
+    metric = MeanAveragePrecision(box_format=format, iou_type='segm', max_detection_thresholds = [1,100, 1500], backend="faster_coco_eval")
     
     metric.update(preds, target)
     metric.update(preds, target)
     res = metric.compute()
-    res['iou'] = _cumpute_iou(preds, target) 
+    if cal_iou:
+        res['iou'] = _cumpute_iou(preds, target) 
     res["file"] = Path(path2pred).name
     return res 
 
 
-def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = True, path2save = None):
+def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', cal_iou = False, save_csv = True, path2save = None, max_workers = 10):
     """
         Compute mAP metric on files txt yolo format using torchmetrics
     Args:
@@ -102,7 +103,7 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = T
     assert type in ('bbox', 'segm'), f"Expected argument `type` to be one of ('bbox', 'segm') but got {type}"
     if type == 'bbox':
         for fname, fpath in tqdm(file_names.items()): 
-            print(fname, sep = '\n', flush=True)
+            # print(fname, sep = '\n', flush=True)
             with open(fpath,"r") as f:
                 data = np.loadtxt(f)
             #если ключевые точки
@@ -137,15 +138,16 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = T
 
             metric.update(preds, target)
             res = metric.compute()
-            res['iou'] = _cumpute_iou(preds, target) 
+            if cal_iou:
+                res['iou'] = _cumpute_iou(preds, target) 
             res["file"] = Path(fpath.name)
             map.append(res)   
 
     else:
         scale = 640
         try:
-            with concurrent.futures.ProcessPoolExecutor(max_workers=15) as executor:
-                futures = {executor.submit(calculate_mertics, fpath, file_names_target[fname], format):fname for fname, fpath in tqdm(file_names.items())}
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+                futures = {executor.submit(calculate_mertics, fpath, file_names_target[fname], format, cal_iou):fname for fname, fpath in tqdm(file_names.items())}
                 for future in concurrent.futures.as_completed(futures):
                     res = future.result()
                     map.append(res) 
@@ -163,6 +165,7 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', save_csv = T
             d = dict(zip(item.keys(),values))
             map_np.append(d)
             pd.DataFrame(map_np).to_csv(path2save,index = False)
+        print(f'Save map result to {path2save}')
     return map
 
 def _cumpute_iou(pred, target):
@@ -205,7 +208,7 @@ def _cumpute_iou(pred, target):
 if __name__ == '__main__':
     map = compute_map("/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/box_v10x/conf_0.25/labels/",
                     "/storage/reshetnikov/open_pits_merge/merge_fraction/split/yolo/", format='xywh', type='bbox', 
-                    path2save='/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/box_v10x/map_025.csv')
+                    path2save='map_025.csv')
 
     # map = compute_map("/storage/reshetnikov/yolov8_rotate/stages/runs/splite_comp/var/obb/conf_0.25/labels/",
     #                 "/storage/reshetnikov/open_pits_merge/merge_fraction/split/obb/", format='xyxy', type='segm', 
