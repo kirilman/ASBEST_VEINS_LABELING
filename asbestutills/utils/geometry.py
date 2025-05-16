@@ -244,6 +244,10 @@ def segment2obb(x_coords, y_coords):
     x0, y0, x1, y1, x2, y2, x3, y3
     """
     ax1, ay1, ax2, ay2 = coords_max_line(x_coords, y_coords)
+
+    #инициализация
+    bx1, by1 = ax1, ay1
+    bx2, by2 = ax2, ay2
     if ax2 > ax1 and ay2 > ay1:
         ax2, ax1 = ax1, ax2
         ay2, ay1 = ay1, ay2
@@ -257,13 +261,14 @@ def segment2obb(x_coords, y_coords):
             if abs(d) > max_dist_right:
                 max_dist_right = d
                 bx2, by2 = point
+                bx1, by1 = point #11
         else:
             A, B, C = line_from_points((ax1, ay1), (ax2, ay2))
             d = distance_to_perpendicular(A, B, C, point[0], point[1])
             if abs(d) > max_dist_left:
                 max_dist_left = d
                 bx1, by1 = point
-
+                bx1, by1 = point #!!
     px1, px2 = point_intersection(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2)
     n1, n2 = vec_from_points((px1, px2), (ax1, ay1))
     m1, m2 = vec_from_points((px1, px2), (px1 + 1000, px2))

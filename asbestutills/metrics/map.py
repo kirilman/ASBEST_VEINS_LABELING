@@ -109,6 +109,9 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', cal_iou = Fa
                 data = np.loadtxt(f)
             if len(data) == 0:
                 continue
+            if len(data.shape) == 1:
+                continue
+                # data = data.reshape(-1,1)
             #если ключевые точки
             if data.shape[1]>5:
                 print(f'{fpath} is keypoint prediction file')

@@ -439,6 +439,9 @@ def coco2obb_maxline(path2json, path2save, norm=True):
             continue
 
         ax1, ay1, ax2, ay2 = coords_max_line(x_coords, y_coords)
+        #инициализация
+        bx1, by1 = ax1, ay1
+        bx2, by2 = ax2, ay2
         if ax2 > ax1 and ay2 > ay1:
             ax2, ax1 = ax1, ax2
             ay2, ay1 = ay1, ay2
