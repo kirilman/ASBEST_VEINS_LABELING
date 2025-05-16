@@ -133,19 +133,27 @@ def coords_max_line(x_coords, y_coords):
         x_coords (np.darray): x coords polygone
         y_coords (np.darray): y coords polygone
     """
-    max_distance = 0
-    points = [(x, y) for x, y in zip(x_coords, y_coords)]
-    main_point = None
 
-    for p1 in points:
-        for p2 in points:
-            dist = max(max_distance, distance(p1, p2))
-            if dist > max_distance:
-                max_distance = dist
-                main_point = (p1, p2)
-    x1, y1 = main_point[0]
-    x2, y2 = main_point[1]
-    return x1, y1, x2, y2
+    x = np.asarray(x_coords)
+    y = np.asarray(y_coords)
+    dx = x[:, None] - x
+    dy = y[:, None] - y
+    dist_sq = dx**2 + dy**2
+    i, j = np.unravel_index(np.argmax(dist_sq), dist_sq.shape)
+    return x[i], y[i], x[j], y[j]
+
+    # max_distance = 0
+    # points = [(x, y) for x, y in zip(x_coords, y_coords)]
+    # main_point = None
+    # for p1 in points:
+    #     for p2 in points:
+    #         dist = max(max_distance, distance(p1, p2))
+    #         if dist > max_distance:
+    #             max_distance = dist
+    #             main_point = (p1, p2)
+    # x1, y1 = main_point[0]
+    # x2, y2 = main_point[1]
+    # return x1, y1, x2, y2
 
 
 def position(x, y, x1, y1, x2, y2):
@@ -261,14 +269,14 @@ def segment2obb(x_coords, y_coords):
             if abs(d) > max_dist_right:
                 max_dist_right = d
                 bx2, by2 = point
-                bx1, by1 = point #11
+                
         else:
             A, B, C = line_from_points((ax1, ay1), (ax2, ay2))
             d = distance_to_perpendicular(A, B, C, point[0], point[1])
             if abs(d) > max_dist_left:
                 max_dist_left = d
                 bx1, by1 = point
-                bx1, by1 = point #!!
+
     px1, px2 = point_intersection(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2)
     n1, n2 = vec_from_points((px1, px2), (ax1, ay1))
     m1, m2 = vec_from_points((px1, px2), (px1 + 1000, px2))

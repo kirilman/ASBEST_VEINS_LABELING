@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(name='asbestutills',
       author = 'Ronkin M.V, Reshetnikov K.I.',
-      version='0.3.0',
+      version='0.3.1',
       description='Python Asbest Utilities',
       url='https://www.python.org/sigs/distutils-sig/',
       # packages=['asbestutills'],              # List of module names that installing
