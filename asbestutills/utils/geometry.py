@@ -156,6 +156,12 @@ def coords_max_line(x_coords, y_coords):
     # return x1, y1, x2, y2
 
 
+def max_distance(x_coords, y_coords):
+    r = (x_coords[:, np.newaxis] - x_coords) ** 2 + (
+        y_coords[:, np.newaxis] - y_coords
+    ) ** 2
+    return np.sqrt(r.max())
+
 def position(x, y, x1, y1, x2, y2):
     """point position right or left
     Args:
