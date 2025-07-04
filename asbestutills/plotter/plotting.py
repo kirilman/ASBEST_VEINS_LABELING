@@ -337,6 +337,28 @@ def draw_box_with_keypoints(path2label, path2image, rescale=True, color=(0, 255,
     return new_image
 
 
+def plot_segment_from_path(path2label,path2image, path2save):
+    f_image = {x.stem:x for x in path2image.glob("*")}
+    for f_l in path2label.glob("*.txt"):
+        segment = read_segmentation_labels(f_l)
+        img = cv2.imread(f_image[f_l.stem])
+        H,W,_ = img.shape
+        polys = []
+        for s in segment:
+            xx = (s[1::2]*W).astype(np.int32)
+            yy = (s[2::2]*H).astype(np.int32)
+            g = np.vstack((xx, yy)).T
+            polys.append(g)
+        anno = Annotator(img, 5)
+        for p in polys:
+            xys = []
+            for ss in p:
+                xys.append((ss[0],ss[1]))
+            anno.add_polygone(xys,color = (20,0,210))
+        img_segment =  np.array(anno.img)
+        cv2.imwrite(str(path2save / f_image[f_l.stem]),img_segment)
+
+
 class Annotator:
     def __init__(self, img, line_width=None):
         self.img = img if isinstance(img, Image.Image) else Image.fromarray(img)

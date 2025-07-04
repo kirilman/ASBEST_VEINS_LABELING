@@ -1,15 +1,16 @@
 import numpy as np
-from _annotation import Annotation
-from utils.geometry import coords_max_line, max_distance
+from asbestutills.utils.geometry import coords_max_line, max_distance
 from sklearn.neighbors import BallTree
-from metrics.map import predictionformat
+from asbestutills.metrics.map import predictionformat
 
 class Polygone:
     def __init__(self, xx, yy):
         self.xx = xx
         self.yy = yy
+        # self._centr = None
         self._validate_coords()
         self.__calculate()
+        
     def _validate_coords(self):
         if len(self.xx) < 3:
             raise ValueError("Полигон должен содержать минимум 3 точки")
@@ -19,18 +20,18 @@ class Polygone:
     def __calculate(self):
         xc = np.sum(self.xx)/len(self.xx)
         yc = np.sum(self.yy)/len(self.yy)
-        self.centr = (xc,yc)
+        self._centr = (xc,yc)
         x1, y1, x2, y2 = coords_max_line(self.xx, self.yy)
-        self.max_size = np.sqrt((x1-x2)**2 + (y1-y2)**2)
+        self._max_size = np.sqrt((x1-x2)**2 + (y1-y2)**2)
     
     @property
     def centr(self):
-        return self.centr
+        return self._centr
     
     @property
     def max_size(self):
-        return self.max_size
-    
+        return self._max_size
+
 
 class PolygonManager:
     def __init__(self, polygones, width, height):
@@ -83,8 +84,6 @@ def point_in_polygon(p, polygon):
     return inside
 
 
-
-
 def collect_sizes(segments, obb_pred, width, height):
     """
     segments:
@@ -114,9 +113,9 @@ def collect_sizes(segments, obb_pred, width, height):
         yc = []
         for segment in obb_pred:
             segment = np.array(segment)
-            l = len(segment[5::2])
-            cx = segment[5::2].sum()/l
-            cy = segment[6::2].sum()/l
+            l = len(segment[1::2])
+            cx = segment[1::2].sum()/l
+            cy = segment[2::2].sum()/l
             xc.append(cx)
             yc.append(cy)
 
@@ -127,7 +126,6 @@ def collect_sizes(segments, obb_pred, width, height):
         
         xc = xc.astype(np.int32)
         yc = yc.astype(np.int32)
-
     seg_maxsize = []
     bbox_sizes =  [] #размеры obb
 
@@ -148,9 +146,9 @@ def collect_sizes(segments, obb_pred, width, height):
                 dy = np.sqrt((coords[2] - coords[4]) ** 2 + (coords[3] - coords[5]) ** 2)
                 d=max(dx, dy)
             else:#контур
-                coords = obb_pred[i][5:]
-                # print(coords)
+                coords = obb_pred[i][1:]
                 d = max_distance(coords[0::2]*width,coords[1::2]*height,)
+
             bbox_sizes.append(d)
              
     return seg_maxsize, bbox_sizes

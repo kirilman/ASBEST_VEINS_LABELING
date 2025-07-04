@@ -384,8 +384,11 @@ class Annotation():
       anno = self.get_annotations(image_id = image_id, cat_ids = cat_ids)
       anns = []
       for s in anno:
-        x_coords = np.array(s['segmentation'][0][::2])  # /IMAGE_W
-        y_coords = np.array(s['segmentation'][0][1::2])
+        if len(s['segmentation']) > 0:
+          x_coords = np.array(s['segmentation'][0][::2])  # /IMAGE_W
+          y_coords = np.array(s['segmentation'][0][1::2])
+        else:
+          continue
         try:
           x0, y0, x1, y1, x2, y2, x3, y3 = segment2obb(x_coords,y_coords)
           anns.append([x0, y0, x1, y1, x2, y2, x3, y3])

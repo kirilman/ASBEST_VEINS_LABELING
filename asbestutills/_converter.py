@@ -8,6 +8,7 @@ try:
     from ._annotation import Annotation
     from ._path import list_ext, list_images
 except:
+    pass
     from _annotation import Annotation
     from _path import list_ext, list_images
 
@@ -886,7 +887,7 @@ if __name__ == "__main__":
         "--type",
         type=str,
         default="keypoint",
-        help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files; 'obb' - obb; 'yolo2coco'; 'coco2yolo'; 'keypoint'; coco2ade \n",
+        help="'coco2obb' - Convert from coco json format to orientited bounding box in txt files; 'obb' - obb; obb2dota; 'yolo2coco'; 'coco2yolo'; 'keypoint'; coco2ade \n",
     )
     args = parser.parse_args()
     print(args, args.type)
