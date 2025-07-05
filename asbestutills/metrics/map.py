@@ -77,7 +77,6 @@ def calculate_mertics(path2pred, path2label, format, cal_iou = False, scale = 64
     metric = MeanAveragePrecision(box_format=format, iou_type='segm', max_detection_thresholds = [1,100, 1500], backend="faster_coco_eval")
     
     metric.update(preds, target)
-    metric.update(preds, target)
     res = metric.compute()
     if cal_iou:
         res['iou'] = _cumpute_iou(preds, target) 

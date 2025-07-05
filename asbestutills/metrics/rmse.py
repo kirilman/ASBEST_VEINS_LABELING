@@ -84,6 +84,8 @@ def point_in_polygon(p, polygon):
     return inside
 
 
+
+
 def collect_sizes(segments, obb_pred, width, height):
     """
     segments:
@@ -106,16 +108,16 @@ def collect_sizes(segments, obb_pred, width, height):
         obb_pred[:,1::2]*=height
         xc = np.sum(obb_pred[:,::2],axis=1)/4
         yc = np.sum(obb_pred[:,1::2],axis=1)/4
-        yc = yc.astype(np.int32)
-        xc = xc.astype(np.int32)
+        # yc = yc.astype(np.int32)
+        # xc = xc.astype(np.int32)
     else:
         xc = []
         yc = []
         for segment in obb_pred:
             segment = np.array(segment)
-            l = len(segment[1::2])
-            cx = segment[1::2].sum()/l
-            cy = segment[2::2].sum()/l
+            l = len(segment[5::2])
+            cx = segment[5::2].sum()/l
+            cy = segment[6::2].sum()/l
             xc.append(cx)
             yc.append(cy)
 
@@ -124,14 +126,19 @@ def collect_sizes(segments, obb_pred, width, height):
         xc = np.array(xc)*width
         yc = np.array(yc)*height
         
-        xc = xc.astype(np.int32)
-        yc = yc.astype(np.int32)
+        # xc = xc.astype(np.int32)
+        # yc = yc.astype(np.int32)
+
     seg_maxsize = []
     bbox_sizes =  [] #размеры obb
 
     for i in range(len(xc)):
-        k = manager.neighbor_polygone((xc[i], yc[i]))[0]
-        pol = manager.polygones[k]
+        try:
+            k = manager.neighbor_polygone((xc[i], yc[i]))[0]
+            pol = manager.polygones[k]
+        except Exception as err:
+            print(f'Err in neighbor_polygone {err}',xc[i],yc[i],)
+            continue
         # if pred_format == 'obb':
         r=np.array([(x,y) for x,y in zip(pol.xx,pol.yy)]).astype(np.int32)        
         # print(xc[i], yc[i],r)
@@ -146,9 +153,9 @@ def collect_sizes(segments, obb_pred, width, height):
                 dy = np.sqrt((coords[2] - coords[4]) ** 2 + (coords[3] - coords[5]) ** 2)
                 d=max(dx, dy)
             else:#контур
-                coords = obb_pred[i][1:]
+                coords = obb_pred[i][5:]
+                # print(coords)
                 d = max_distance(coords[0::2]*width,coords[1::2]*height,)
-
             bbox_sizes.append(d)
              
     return seg_maxsize, bbox_sizes
