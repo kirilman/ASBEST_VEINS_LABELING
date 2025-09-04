@@ -18,16 +18,16 @@ def read_segmentation_labels(p):
         lines = f.readlines()
         return [np.fromstring(line, sep=' ').tolist() for line in lines]
     
-
-def calculate_mertics(path2pred, path2label, format, cal_iou = False, scale = 640):
-    data = read_segmentation_labels(path2pred)
+def create_mask_numpy(path2txt, scale = 640):
+    data = read_segmentation_labels(path2txt)
     labels = torch.tensor(np.array([x[0]+1 for x in data], dtype = np.int32), dtype = torch.long) 
     scores = torch.tensor([1.0]*len(labels)) 
     boxes  = [x[1:] for x in data]
-    mask_pred = np.zeros((len(data), scale, scale))
+    
+    masks = []
     for i, line in enumerate(data):
         if len(line)<5:
-            print(f"{i}/{len(data)}, ",path2pred)
+            print(f"{i}/{len(data)}, ",path2txt)
             continue
         coords = np.array(line[1:]).reshape(-1,2)
         coords*=scale
@@ -38,8 +38,32 @@ def calculate_mertics(path2pred, path2label, format, cal_iou = False, scale = 64
             mask = mask.astype(bool)
         else:
             mask = np.zeros((scale, scale))
-        mask_pred[i] = mask
-    
+        masks.append(mask)
+    mask_pred = np.array(masks, dtype=np.int32)
+    return mask_pred, scores, labels
+
+
+def calculate_mertics(path2pred, path2label, format, cal_iou = False, scale = 640):
+    # data = read_segmentation_labels(path2pred)
+    # labels = torch.tensor(np.array([x[0]+1 for x in data], dtype = np.int32), dtype = torch.long) 
+    # scores = torch.tensor([1.0]*len(labels)) 
+    # boxes  = [x[1:] for x in data]
+    # mask_pred = np.zeros((len(data), scale, scale))
+    # for i, line in enumerate(data):
+    #     if len(line)<5:
+    #         print(f"{i}/{len(data)}, ",path2pred)
+    #         continue
+    #     coords = np.array(line[1:]).reshape(-1,2)
+    #     coords*=scale
+    #     coords = coords.astype(np.int32)
+    #     mask = np.zeros((scale, scale))
+    #     cv2.fillPoly(mask, [coords], 1)
+    #     if np.sum(mask)>10:
+    #         mask = mask.astype(bool)
+    #     else:
+    #         mask = np.zeros((scale, scale))
+    #     mask_pred[i] = mask
+    mask_pred, scores, labels = create_mask_numpy(path2pred, scale)
     preds = [
     dict(
         masks=tensor(mask_pred, dtype=torch.bool),
@@ -48,29 +72,29 @@ def calculate_mertics(path2pred, path2label, format, cal_iou = False, scale = 64
     )
     ]
     #targets------------------
-    data = read_segmentation_labels(path2label)
-    labels = torch.tensor(np.array([x[0] for x in data], dtype = np.int32), dtype = torch.long) + 1
-    boxes  = [x[1:] for x in data]
-    mask_tgt = np.zeros((len(data), scale, scale))
-    for i, line in enumerate(data):
-        if len(line)<5:
-            print(f"{i}/{len(data)}, ",path2label)
-            continue
-        coords = np.array(line[1:]).reshape(-1,2)
-        coords*=scale
-        coords = coords.astype(np.int32)
-        mask = np.zeros((scale, scale))
-        cv2.fillPoly(mask, [coords], 1)
-        if np.sum(mask)>10:
-            mask = mask.astype(bool)
-        else:
-            mask = np.zeros((scale, scale))
-        mask_tgt[i] = mask
-        
+    # data = read_segmentation_labels(path2label)
+    # labels = torch.tensor(np.array([x[0] for x in data], dtype = np.int32), dtype = torch.long) + 1
+    # boxes  = [x[1:] for x in data]
+    # mask_tgt = np.zeros((len(data), scale, scale))
+    # for i, line in enumerate(data):
+    #     if len(line)<5:
+    #         print(f"{i}/{len(data)}, ",path2label)
+    #         continue
+    #     coords = np.array(line[1:]).reshape(-1,2)
+    #     coords*=scale
+    #     coords = coords.astype(np.int32)
+    #     mask = np.zeros((scale, scale))
+    #     cv2.fillPoly(mask, [coords], 1)
+    #     if np.sum(mask)>10:
+    #         mask = mask.astype(bool)
+    #     else:
+    #         mask = np.zeros((scale, scale))
+    #     mask_tgt[i] = mask
+    mask_tgt, scores, labels_tgt = create_mask_numpy(path2label, scale)
     target = [
     dict(
         masks=tensor(mask_tgt, dtype=torch.bool),
-        labels=labels,
+        labels=labels_tgt,
     )
     ]
     
@@ -84,7 +108,7 @@ def calculate_mertics(path2pred, path2label, format, cal_iou = False, scale = 64
     return res 
 
 
-def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', cal_iou = False, save_csv = True, path2save = None, max_workers = 10):
+def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', cal_iou = False, save_csv = True, path2save = None, scale = 640, max_workers = 10):
     """
         Compute mAP metric on files txt yolo format using torchmetrics
     Args:
@@ -149,10 +173,9 @@ def compute_map(path2pred, path2anno, format='xywh', type = 'bbox', cal_iou = Fa
             map.append(res)   
 
     else:
-        scale = 640
         try:
             with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-                futures = {executor.submit(calculate_mertics, fpath, file_names_target[fname], format, cal_iou):fname for fname, fpath in tqdm(file_names.items())}
+                futures = {executor.submit(calculate_mertics, fpath, file_names_target[fname], format, cal_iou, scale):fname for fname, fpath in tqdm(file_names.items())}
                 for future in concurrent.futures.as_completed(futures):
                     res = future.result()
                     map.append(res) 
