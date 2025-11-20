@@ -233,6 +233,26 @@ def _cumpute_iou(pred, target):
     mean_iou = MeanIoU(num_classes=1)
     return mean_iou(mask, targ)
 
+# def predictionformat(coors):
+#     """
+#         coors: List[List] список координат из файла YOLO
+#         Формат предсказаний для txt файла YOLO
+#     """
+#     lens = []
+#     for c in coors:
+#        digits = c.split(' ')
+#        lens.append(len(digits)) 
+#     n_min = np.min(lens)
+#     n_max = np.max(lens)
+#     if n_max - n_min > 0:
+#         return 'segm'
+#     elif n_max == 6:
+#         return 'box'
+#     elif n_max == 10:
+#         return 'obb'
+#     elif n_max == 14:
+#         return 'kpnt'
+
 def predictionformat(coors):
     """
         coors: List[List] список координат из файла YOLO

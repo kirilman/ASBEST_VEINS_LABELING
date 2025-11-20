@@ -84,8 +84,6 @@ def point_in_polygon(p, polygon):
     return inside
 
 
-
-
 def collect_sizes(segments, obb_pred, width, height):
     """
     segments:
@@ -96,12 +94,14 @@ def collect_sizes(segments, obb_pred, width, height):
         ]
     obb_pred: np.array предсказания обрамляющими рамками без p класса
         для сегментации сначало координаты бокса x,y,w,h, потом segment. [:,4:]
-
+    
+    Поддерживаемые форматы:
+        - 'obb': [x1,y1,x2,y2,x3,y3,x4,y4] — 4 угла
+        - 'xywh': [class, x_center, y_center, w, h]
+        - 'segment': [class, x, y, w, h, x1,y1,x2,y2,...]
     """
     manager = PolygonManager(segments, width, height)
     pred_format = predictionformat(obb_pred)
-
-    #центр масс фрагмента
     if pred_format == 'obb':
         obb_pred = np.array(obb_pred)[:,1:]
         obb_pred[:,::2]*=width
@@ -110,6 +110,15 @@ def collect_sizes(segments, obb_pred, width, height):
         yc = np.sum(obb_pred[:,1::2],axis=1)/4
         # yc = yc.astype(np.int32)
         # xc = xc.astype(np.int32)
+    elif pred_format == 'box':
+        obb_pred = np.array(obb_pred)
+        # Формат: [class, x_center, y_center, w, h]
+        xc = obb_pred[:, 1] * width   # масштабируем центр
+        yc = obb_pred[:, 2] * height
+        # Размер объекта — max(w, h)
+        ws = obb_pred[:, 3] * width
+        hs = obb_pred[:, 4] * height
+        bbox_sizes = np.maximum(ws, hs).tolist()  # сохраняем сразу
     else:
         xc = []
         yc = []
@@ -120,44 +129,45 @@ def collect_sizes(segments, obb_pred, width, height):
             cy = segment[6::2].sum()/l
             xc.append(cx)
             yc.append(cy)
-
-        yc = np.array(yc)
          #коррекция
         xc = np.array(xc)*width
         yc = np.array(yc)*height
-        
-        # xc = xc.astype(np.int32)
-        # yc = yc.astype(np.int32)
-
     seg_maxsize = []
     bbox_sizes =  [] #размеры obb
+    boxs = []
 
+    centers = []
     for i in range(len(xc)):
+        x_center, y_center = xc[i], yc[i]
         try:
-            k = manager.neighbor_polygone((xc[i], yc[i]))[0]
+            k = manager.neighbor_polygone((x_center, y_center))[0]
             pol = manager.polygones[k]
         except Exception as err:
-            print(f'Err in neighbor_polygone {err}',xc[i],yc[i],)
+            print(f'Err in neighbor_polygone {err}',x_center, y_center,)
             continue
-        # if pred_format == 'obb':
         r=np.array([(x,y) for x,y in zip(pol.xx,pol.yy)]).astype(np.int32)        
-        # print(xc[i], yc[i],r)
-        p_in = point_in_polygon((xc[i], yc[i]),r)
-        if not p_in:
+        if not point_in_polygon((x_center, y_center),r):
             continue
         else:
             seg_maxsize.append(pol.max_size)
+            centers.append((x_center, y_center))
             if pred_format == 'obb':
                 coords = obb_pred[i]
                 dx = np.sqrt((coords[0] - coords[2]) ** 2 + (coords[1] - coords[3]) ** 2)
                 dy = np.sqrt((coords[2] - coords[4]) ** 2 + (coords[3] - coords[5]) ** 2)
                 d=max(dx, dy)
+            elif pred_format == 'box':
+                box = obb_pred[i]
+                ws = box[3] * width
+                hs = box[4] * height
+                d = np.maximum(ws, hs)
+                boxs.append(obb_pred[i])
             else:#контур
                 coords = obb_pred[i][5:]
-                # print(coords)
+                if len(coords) < 4:
+                    continue
                 d = max_distance(coords[0::2]*width,coords[1::2]*height,)
             bbox_sizes.append(d)
-             
     return seg_maxsize, bbox_sizes
 
     # mean_absolute_error(seg_maxsize,bbox_sizes)

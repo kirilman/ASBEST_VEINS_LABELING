@@ -67,8 +67,8 @@ def split_with_file(
     print(train_names)
 
     path2save = Path(path2save)
-    if path2save.exists():
-        shutil.rmtree(path2save)
+    # if path2save.exists():
+    #     shutil.rmtree(path2save)
     path2save.mkdir()
     print([path2image / f for f in f_images if Path(f) in train_names])
     _cp_file_list(
@@ -125,6 +125,7 @@ def k_fold_split_yolo(
 ):
     path2label = Path(path2label)
     path2image = Path(path2image)
+    print(path2label, path2image)
     l_labels = sorted(list_ext(path2label), key=lambda x: x.split(".")[0])
     l_images = list_images(path2image)
     l_images = sorted(

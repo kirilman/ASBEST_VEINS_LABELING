@@ -8,7 +8,6 @@ try:
     from ._annotation import Annotation
     from ._path import list_ext, list_images
 except:
-    pass
     from _annotation import Annotation
     from _path import list_ext, list_images
 
@@ -672,7 +671,7 @@ def convert_coco_json(json_dir="../coco/annotations/", save_dir= './', use_segme
     # Import json
     if Path(json_dir).suffix == ".json":
         json_dir = Path(json_dir).parent
-    for json_file in sorted(json_dir.resolve().glob("*.json")):
+    for json_file in sorted(Path(json_dir).resolve().glob("*.json")):
         fn = Path(save_dir)  # folder name
         fn.mkdir(exist_ok=True)
         print(f'Save path is {fn}')
@@ -718,6 +717,8 @@ def convert_coco_json(json_dir="../coco/annotations/", save_dir= './', use_segme
                         s = (np.array(s).reshape(-1, 2) / np.array([w, h])).reshape(-1).tolist()
                     s = [cls] + s
                     if s not in segments:
+                        # if len(s) < 4:
+                        #     continue
                         segments.append(s)
 
             # Write
@@ -853,6 +854,119 @@ def coco2ade(path2cocojson, path2image, path2save):
         f_name = Path(img['file_name']).stem
         cv2.imwrite(str(path2save / (f_name + '.png')), aie_mask)
 
+
+def convert_mask_to_polygon(mask):
+    contours = None
+    if int(cv2.__version__.split(".")[0]) > 3:
+        contours = cv2.findContours(
+            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS
+        )[0]
+    else:
+        contours = cv2.findContours(
+            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS
+        )[1]
+
+    contours = max(contours, key=lambda arr: arr.size)
+    if contours.shape.count(1):
+        contours = np.squeeze(contours)
+    if contours.size < 3 * 2:
+        raise Exception(
+            "Less then three point have been detected. Can not build a polygon."
+        )
+
+    polygon = []
+    for point in contours:
+        polygon.append([int(point[0]), int(point[1])])
+
+    return polygon
+
+def auto_anno():
+    model = YOLO("./runs/detect/train2/weights/last.pt")
+    cfg = get_cfg()
+    from detectron2.data             import MetadataCatalog, DatasetCatalog 
+    from detectron2.config import get_cfg
+    from detectron2.engine import DefaultTrainer
+    from detectron2 import model_zoo
+    from detectron2.engine import DefaultPredictor
+
+    cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
+    cfg.DATASETS.TRAIN = ("my_dataset_train",)#Train dataset registered in a previous cell
+    cfg.DATASETS.TEST = ("my_dataset_test",)#Test dataset registered in a previous cell
+    cfg.DATALOADER.NUM_WORKERS = 2
+    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")  # Let training initialize from model zoo
+    cfg.SOLVER.IMS_PER_BATCH = 2
+    cfg.SOLVER.BASE_LR = 0.00025
+    cfg.SOLVER.CHECKPOINT_PERIOD = 500
+    cfg.SOLVER.MAX_ITER = 5000 #We found that with a patience of 500, training will early stop before 10,000 iterations
+    cfg.SOLVER.STEPS = []
+    cfg.MODEL.DEVICE = "cuda:1"
+    # cfg.MAX_SIZE_TRAIN = 128
+    cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 256
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1 # 26 letters plus one super class
+    cfg.TEST.EVAL_PERIOD = 0 # Increase this number if you want to monitor validation performance during training
+    cfg.TEST.DETECTIONS_PER_IMAGE = 2500
+
+    cfg.MODEL.WEIGHTS = os.path.join('/storage/reshetnikov/disser/bench/exp_f0/', "model_final.pth")  # path to the model we just trained
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.2   # set a custom testing threshold
+    predictor = DefaultPredictor(cfg)
+    model_mask = predictor.model
+
+    anno_id = 1
+    annotations = []
+    for f in tqdm(f_images):
+        img = cv2.imread(f)
+        name = Path(f).name
+        if not name in img_ids:
+            continue
+        # img=cv2.cvtColor(img,'BGR2RGB')
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        sH, sW = img.shape[:2]
+        res = model(img,conf = 0.4)
+        obb = res[0].boxes.xyxy
+        if len(obb) == 0:
+            continue
+        box=obb[0].detach().cpu().numpy().astype(np.int32)
+        dx = box[0]
+        dy = box[1]
+        img = cv2.rectangle(img, box[:2], box[2:], (0, 255, 0), 2)
+        img_slice = img[box[1]:box[3],box[0]:box[2]]
+        outputs = predictor(img_slice)
+        
+        polygones = []
+        for m in outputs['instances'].pred_masks:
+            mask = m.detach().cpu().numpy().astype(np.float32)
+            mask = np.array(mask).astype(np.float32)
+            _, binary_mask = cv2.threshold(mask, 0.5, 255, cv2.THRESH_BINARY)
+            binary_mask = np.where(binary_mask > 0.5, 255, 0).astype(np.uint8)
+            if binary_mask.sum() < 15:
+                continue
+            try:
+                polygone = convert_mask_to_polygon(binary_mask)
+                polygone = np.array(polygone)
+            except:
+                continue
+            # polygones.append(polygone)
+            x1 = min(polygone[:,0])
+            y1 = min(polygone[:,1])
+            x2 = max(polygone[:,0])
+            y2 = max(polygone[:,1])
+            seg =[]
+            for x, y in zip(polygone[:,0], polygone[:,1]):
+                seg.append(int(x + dx))
+                seg.append(int(y + dy))
+            if polygone_area(polygone[:,0], polygone[:,1]) > 1500:
+                continue  
+            d = {'id': anno_id,
+                'image_id': img_ids[Path(f).name],
+                'category_id': 1,
+                'segmentation':[seg],
+                'area': int(polygone_area(polygone[:,0], polygone[:,1])),
+                'bbox':[int(x1 + dx), int(y1 + dy), int(x2 + dx), int(y2 + dy)],
+                'iscrowd': 0,
+                'attributes': {'occluded': False}
+            }
+            annotations.append(d)
+            anno_id+=1
 
 if __name__ == "__main__":
     # conv = Yolo2Coco("/storage/reshetnikov/openpits/fold/Fold_0/test/",

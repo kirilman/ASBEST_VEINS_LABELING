@@ -7,33 +7,67 @@ from pprint import pprint
 from pathlib import Path
 import cv2
 from multiprocessing import Pool
-from ._annotation_base import (_set_cat_names,
-                               _cat_ids,
-                               _filter_cat,
-                               _replace_image_dir,
-                               _get_data_info,
-                               _most_frequent_size, 
-                               _image_list,
-                               _count_anno_at_images,
-                              )
 
-from ._reset_annotation import (_reset_indexes,
-                                _reset_images,
-                                _reset_labels,
-                                _reset_image_sizes, 
-                                reset_annotation)
+import sys
 
-from ._image_base import (_resize_imgs,
-                          _imgs2gray)
+# Add the parent directory to Python path
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+  from ._annotation_base import (_set_cat_names,
+                                _cat_ids,
+                                _filter_cat,
+                                _replace_image_dir,
+                                _get_data_info,
+                                _most_frequent_size, 
+                                _image_list,
+                                _count_anno_at_images,
+                                )
 
-from ._coco_base import (_ann2mask,
-                         _masks2image,
-                         _masks2d,
-                         _image_with_bbox,
-                         _image_with_contours,
-                         _image_with_obbox)
+  from ._reset_annotation import (_reset_indexes,
+                                  _reset_images,
+                                  _reset_labels,
+                                  _reset_image_sizes, 
+                                  reset_annotation)
 
-from .utils.geometry import segment2obb, coords_max_line, distance, coords_other_line_by_coords
+  from ._image_base import (_resize_imgs,
+                            _imgs2gray)
+
+  from ._coco_base import (_ann2mask,
+                          _masks2image,
+                          _masks2d,
+                          _image_with_bbox,
+                          _image_with_contours,
+                          _image_with_obbox)
+
+  from .utils.geometry import segment2obb, coords_max_line, distance, coords_other_line_by_coords
+except:
+  from _annotation_base import (_set_cat_names,
+                                _cat_ids,
+                                _filter_cat,
+                                _replace_image_dir,
+                                _get_data_info,
+                                _most_frequent_size, 
+                                _image_list,
+                                _count_anno_at_images,
+                                )
+
+  from _reset_annotation import (_reset_indexes,
+                                  _reset_images,
+                                  _reset_labels,
+                                  _reset_image_sizes, 
+                                  reset_annotation)
+
+  from _image_base import (_resize_imgs,
+                            _imgs2gray)
+
+  from _coco_base import (_ann2mask,
+                          _masks2image,
+                          _masks2d,
+                          _image_with_bbox,
+                          _image_with_contours,
+                          _image_with_obbox)
+
+  from utils.geometry import segment2obb, coords_max_line, distance, coords_other_line_by_coords
 
 
 class Annotation():
