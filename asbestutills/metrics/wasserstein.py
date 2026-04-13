@@ -24,7 +24,7 @@ def var_confidence(path2model, path2source, path2save, conf_step, max_det, imgsz
     #     model = YOLO(model=path2model)
     model = YOLO(model=path2model)
     model.to(device=device)
-    for conf in np.arange(0.25, 0.3, conf_step):
+    for conf in np.arange(0.1, 0.7, conf_step):
         c = np.round(conf,2)
         name = "conf_{}".format(c)
         model.predict(source = path2source, save = False, imgsz = imgsz, conf = c, project = path2save, name = name, save_txt = True, max_det = max_det, augment=tta)

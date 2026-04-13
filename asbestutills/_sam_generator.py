@@ -3,9 +3,14 @@ import torchvision
 import sys
 import pandas as pd
 import os
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
-
-
+# from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+import numpy as np 
+from pathlib import Path
+from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+from sam2.build_sam import build_sam2
+from tqdm import tqdm
+import json
+import cv2
 
 class Sam_processor:
     def __init__(self, 
@@ -72,9 +77,6 @@ def mask_to_coco_annotation(
     rle = mask_utils.encode(np.asfortranarray(mask))
     rle["counts"] = rle["counts"].decode("utf-8")  # COCO JSON requires string counts
     
-    coords = runs_to_coords(row.segmentation['counts'], row.segmentation['size'])
-    hull = cv2.convexHull(coords, clockwise=False)
-    segment = hull.flatten().tolist()
     # Compute bounding box [x, y, width, height] (xywh)
     # Using pycocotools' built-in utility
     bbox = mask_utils.toBbox(rle).tolist()  # [x, y, w, h]
@@ -94,16 +96,22 @@ def mask_to_coco_annotation(
     return ann
 
 def sam_annotate(path2data, path2save):
-
-    sam2_checkpoint = "sam2_hiera_large.pt"
+    path2data = Path(path2data)
+    sam2_checkpoint = "/storage/reshetnikov/disser/notebooks/sam2_hiera_large.pt"
     model_cfg = "sam2_hiera_l.yaml"  # or _b+.yaml, _s.yaml, etc.
 
     sam2_model = build_sam2(model_cfg, sam2_checkpoint, device="cuda")
 
-    mask_generator = SAM2AutomaticMaskGenerator(sam2_model, pred_iou_thresh=0.4, 
+    mask_generator = SAM2AutomaticMaskGenerator(sam2_model, pred_iou_thresh=0.7, 
                                            min_mask_region_area=20,
-                                           points_per_side=84,
+                                           points_per_side=96,
                                            stability_score_thresh = 0.94)
+
+    with open('/storage/reshetnikov/openpits/annotations/instances_default.json', 'r') as f:
+        annotation = json.load(f)
+    annotation['annotations'][0]
+    anno_json = annotation.copy()
+    anno_json['categories']
 
     f_images = sorted(list(path2data.rglob("*")))
     print(len(f_images))
@@ -128,11 +136,17 @@ def sam_annotate(path2data, path2save):
     anno_id = 0
     anno = []
     for img_id, f in tqdm(enumerate(f_images)):
-        img = cv2.imread(f)
-        sharpened = sharpen_kernel(img)
+        image = cv2.imread(f)
+        h_orig, w_orig, _ = image.shape
+        image = cv2.resize(image,(int(w_orig/3),int(h_orig/3)))
+        print(h_orig, w_orig)
+        sharpened = sharpen_kernel(image)
         masks = mask_generator.generate(sharpened)   
         for ids, mask in enumerate(masks):
-            r = mask_to_coco_annotation(mask['segmentation'],img_id+1,anno_id,1)
+            m_resize = cv2.resize(mask['segmentation'].astype(np.uint8), (w_orig, h_orig), interpolation=cv2.INTER_NEAREST).astype(bool)
+            if m_resize.sum()/(h_orig * w_orig) > 0.4:
+                continue
+            r = mask_to_coco_annotation(m_resize,img_id+1,anno_id,1)
             anno_id+=1
             anno.append(r)
 
@@ -157,7 +171,7 @@ def cocorle_2cocopoly(path2json, path2save):
         poly_xy = approx.squeeze().flatten().tolist()
         return poly_xy
 
-    with open(path2json'r') as f:
+    with open(path2json, 'r') as f:
         anno = json.load(f)
 
     annotation = []
@@ -173,3 +187,9 @@ def cocorle_2cocopoly(path2json, path2save):
     anno['annotations'] = annotation
     with open(path2save ,'w') as f:
         json.dump(anno,f)
+
+
+
+if __name__ == '__main__':
+    path2save = '/storage/reshetnikov/rock_other/gransostav/05.12/05 12 blog/'
+    sam_annotate(path2save, path2save)

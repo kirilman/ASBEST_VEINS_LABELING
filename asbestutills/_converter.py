@@ -178,6 +178,7 @@ class Yolo2Coco:
             for p in list_ext(self.path_label)
         }
         self.path_save_json = path_save_json
+        print(len(self.image_paths), len(self.label_paths))
 
     def get_image_path(self, image_name):
         """
@@ -244,9 +245,13 @@ class Yolo2Coco:
         categories = []
         fname_list = list_ext(self.path_label, "txt")
         for _, fname in tqdm(enumerate(fname_list)):
-            with open(self.get_label_path(fname.split(".")[0]), "r") as f:
-                lines = f.readlines()
-            h, w = self.get_image_hw(Path(fname).stem)
+            try:
+                with open(self.get_label_path(Path(fname).stem), "r") as f:
+                    lines = f.readlines()
+                h, w = self.get_image_hw(Path(fname).stem)
+            except:
+                print(f'Неудалось найти img for {fname}')
+                continue
 
             for line in lines:
                 data = np.fromstring(line, sep=" ")
@@ -677,7 +682,7 @@ def convert_coco_json(json_dir="../coco/annotations/", save_dir= './', use_segme
         print(f'Save path is {fn}')
         with open(json_file) as f:
             data = json.load(f)
-        
+    
         # Create image dict
         images = {"%g" % x["id"]: x for x in data["images"]}
         # Create image-annotations dict
