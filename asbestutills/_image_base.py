@@ -55,5 +55,19 @@ def _resize_imgs(img_pths, width, height):
     return report_list
 
 #----------------------------------
+def convert2jpeg(folder):
+  for filename in os.listdir(folder):
+      if filename.lower().endswith(".png"):
+          png_path = os.path.join(folder, filename)
+          jpg_path = os.path.splitext(png_path)[0] + ".jpg"
+          with Image.open(png_path) as img:
+              # Конвертируем в RGB, заменяя прозрачность на белый
+              if img.mode in ("RGBA", "LA", "P"):
+                  background = Image.new("RGB", img.size, (255, 255, 255))
+                  background.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
+                  img = background
+              elif img.mode != "RGB":
+                  img = img.convert("RGB")
+              img.save(jpg_path, "JPEG", quality=100)
 
 
