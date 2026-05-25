@@ -98,14 +98,16 @@ def mask_to_coco_annotation(
 def sam_annotate(path2data, path2save):
     path2data = Path(path2data)
     sam2_checkpoint = "/storage/reshetnikov/disser/notebooks/sam2_hiera_large.pt"
+    sam2_checkpoint = "/storage/reshetnikov/sam/sam2.1_hiera_large.pt"
     model_cfg = "sam2_hiera_l.yaml"  # or _b+.yaml, _s.yaml, etc.
-
+    model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
+    
     sam2_model = build_sam2(model_cfg, sam2_checkpoint, device="cuda")
 
     mask_generator = SAM2AutomaticMaskGenerator(sam2_model, pred_iou_thresh=0.7, 
                                            min_mask_region_area=20,
                                            points_per_side=96,
-                                           stability_score_thresh = 0.94)
+                                           stability_score_thresh = 0.90)
 
     with open('/storage/reshetnikov/openpits/annotations/instances_default.json', 'r') as f:
         annotation = json.load(f)
@@ -136,19 +138,23 @@ def sam_annotate(path2data, path2save):
     anno_id = 0
     anno = []
     for img_id, f in tqdm(enumerate(f_images)):
-        image = cv2.imread(f)
-        h_orig, w_orig, _ = image.shape
-        image = cv2.resize(image,(int(w_orig/3),int(h_orig/3)))
-        print(h_orig, w_orig)
-        sharpened = sharpen_kernel(image)
-        masks = mask_generator.generate(sharpened)   
-        for ids, mask in enumerate(masks):
-            m_resize = cv2.resize(mask['segmentation'].astype(np.uint8), (w_orig, h_orig), interpolation=cv2.INTER_NEAREST).astype(bool)
-            if m_resize.sum()/(h_orig * w_orig) > 0.4:
-                continue
-            r = mask_to_coco_annotation(m_resize,img_id+1,anno_id,1)
-            anno_id+=1
-            anno.append(r)
+        try:
+            image = cv2.imread(f)
+            h_orig, w_orig, _ = image.shape
+            image = cv2.resize(image,(int(w_orig/3),int(h_orig/3)))
+            print(h_orig, w_orig)
+            sharpened = sharpen_kernel(image)
+            masks = mask_generator.generate(sharpened)   
+            for ids, mask in enumerate(masks):
+                m_resize = cv2.resize(mask['segmentation'].astype(np.uint8), (w_orig, h_orig), interpolation=cv2.INTER_NEAREST).astype(bool)
+                if m_resize.sum()/(h_orig * w_orig) > 0.3:
+                    continue
+                r = mask_to_coco_annotation(m_resize,img_id+1,anno_id,1)
+                anno_id+=1
+                anno.append(r)
+        except Exception as e:
+            print(e)
+            continue
 
     
     anno_json['images'] = images
@@ -191,5 +197,5 @@ def cocorle_2cocopoly(path2json, path2save):
 
 
 if __name__ == '__main__':
-    path2save = '/storage/reshetnikov/rock_other/gransostav/05.12/05 12 blog/'
+    path2save = '/storage/reshetnikov/rock_other/kovsh/images_jpg/'
     sam_annotate(path2save, path2save)
